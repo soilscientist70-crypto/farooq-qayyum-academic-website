@@ -1,6 +1,6 @@
-# Prof. Dr. Muhammad Farooq Qayyum — Academic Website
+# Dr. Muhammad Farooq Qayyum — Academic Website
 
-Deployable static academic website for Prof. Dr. Muhammad Farooq Qayyum, Professor of Soil Science, Bahauddin Zakariya University, Multan, Pakistan.
+Deployable static academic website for Dr. Muhammad Farooq Qayyum, Associate Professor of Soil Science, Bahauddin Zakariya University, Multan, Pakistan.
 
 ## Deploy
 This is a dependency-free static site. For GitHub Pages, set **Settings → Pages → Deploy from a branch**, choose `main` and `/(root)`.
