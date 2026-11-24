@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interactive 3D Protein Configuration Animation</title>
+  <!-- Load Tailwind CSS for responsive layout and crisp controls -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Load Plus Jakarta Sans & Inter fonts -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap">
+  <!-- Load Font Awesome for scientific UI icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <!-- Load Three.js (r128) for 3D molecular visualization -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #0B1F27;
+      font-family: 'Inter', sans-serif;
+      color: #FAF9F6;
+      user-select: none;
+    }
+    h1, h2, h3, .font-display {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    #canvas-wrapper {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 1;
+      cursor: grab;
+      touch-action: none;
+    }
+    #canvas-wrapper:active {
+      cursor: grabbing;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+    .glass-panel {
+      background: rgba(15, 41, 51, 0.84);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+    }
+    .stage-btn {
+      transition: all 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .stage-btn.active {
+      background: #C85A32;
+      color: #FAF9F6;
+      border-color: #E07A5F;
+      box-shadow: 0 4px 16px rgba(200, 90, 50, 0.45);
+      transform: translateY(-1px);
+    }
+    .stage-btn:not(.active):hover {
+      background: rgba(255, 255, 255, 0.12);
+    }
+    /* Custom subtle scrollbar for small viewports */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    @keyframes pulseGlow {
+      0%, 100% { opacity: 0.85; }
+      50% { opacity: 1; }
+    }
+    .denature-active {
+      background: #DC2626 !important;
+      border-color: #F87171 !important;
+      color: #FFFFFF !important;
+      animation: pulseGlow 1.4s infinite;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Full-Viewport 3D Molecular Canvas -->
+  <div id="canvas-wrapper">
+    <canvas id="protein-canvas"></canvas>
+  </div>
+
+  <!-- Top Header & Action Bar -->
+  <header class="fixed top-0 left-0 right-0 z-20 p-3 sm:p-5 pointer-events-none flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <!-- Title Badge -->
+    <div class="glass-panel rounded-2xl px-4 py-3 pointer-events-auto inline-flex items-center gap-3 self-start">
+      <div class="w-10 h-10 rounded-xl bg-[#0F4C5C] border border-[#2A9D8F]/40 flex items-center justify-center shrink-0">
+        <i class="fa-solid fa-dna text-[#E07A5F] text-lg"></i>
+      </div>
+      <div>
+        <p class="text-[11px] font-bold uppercase tracking-widest text-[#E07A5F]">SES-409 · Interactive 3D Model</p>
+        <h1 class="text-base sm:text-lg font-extrabold text-[#FAF9F6] leading-tight">Protein Configuration</h1>
+      </div>
+    </div>
+
+    <!-- Simulation Action Controls -->
+    <div class="flex flex-wrap items-center gap-2 pointer-events-auto">
+      <button id="btn-autoplay" onclick="toggleAutoPlay()" class="glass-panel rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-semibold text-[#FAF9F6] hover:bg-white/15 flex items-center gap-2 transition">
+        <i id="icon-autoplay" class="fa-solid fa-play text-[#E07A5F]"></i>
+        <span id="text-autoplay">Auto-Fold Tour</span>
+      </button>
+
+      <button id="btn-bonds" onclick="toggleBonds()" class="glass-panel rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-semibold text-[#FAF9F6] hover:bg-white/15 flex items-center gap-2 transition">
+        <i class="fa-solid fa-link text-[#38BDF8]"></i>
+        <span id="text-bonds">Bonds: ON</span>
+      </button>
+
+      <button id="btn-denature" onclick="toggleDenature()" class="glass-panel rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-semibold text-[#FAF9F6] hover:bg-white/15 flex items-center gap-2 transition">
+        <i class="fa-solid fa-fire-flame-curved text-[#F87171]"></i>
+        <span id="text-denature">Denature</span>
+      </button>
+
+      <button onclick="resetCamera()" title="Reset Camera Angle" class="glass-panel rounded-xl p-2.5 text-xs sm:text-sm font-semibold text-[#CBD5E1] hover:text-white hover:bg-white/15 transition">
+        <i class="fa-solid fa-rotate-right"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- Educational Info & Legend Card (Left Side on Desktop, Collapsible on Mobile) -->
+  <aside id="info-card" class="fixed top-28 sm:top-24 left-3 sm:left-5 z-20 w-[calc(100vw-24px)] max-w-sm glass-panel rounded-2xl p-4 sm:p-5 pointer-events-auto transition-all duration-300">
+    <div class="flex items-start justify-between gap-2">
+      <div>
+        <span id="stage-badge" class="inline-block text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-[#0F4C5C] text-[#7DD3FC] mb-1.5">
+          Level 1 of 4
+        </span>
+        <h2 id="stage-title" class="text-lg sm:text-xl font-bold text-[#FAF9F6] leading-snug">
+          Primary Structure
+        </h2>
+      </div>
+      <button onclick="toggleInfoBody()" id="btn-toggle-info" class="p-2 rounded-lg text-[#94A3B8] hover:text-white hover:bg-white/10 transition" aria-label="Toggle details">
+        <i id="icon-toggle-info" class="fa-solid fa-chevron-up text-xs"></i>
+      </button>
+    </div>
+
+    <div id="info-body" class="mt-2.5 space-y-3">
+      <p id="stage-desc" class="text-xs sm:text-sm text-[#CBD5E1] leading-relaxed">
+        Linear sequence of L-α-amino acids covalently linked by rigid <strong>peptide bonds</strong> from the N-terminus (H₂N–) to the C-terminus (–COOH).
+      </p>
+
+      <div class="bg-[#0B1F27]/70 rounded-xl p-3 border border-white/10 space-y-1.5">
+        <div class="flex items-center justify-between text-xs">
+          <span class="text-[#94A3B8] font-medium">Stabilizing Force:</span>
+          <span id="stage-bond" class="text-[#FAF9F6] font-semibold">Covalent Peptide Bonds</span>
+        </div>
+        <div class="flex items-center justify-between text-xs">
+          <span class="text-[#94A3B8] font-medium">Biochemical Example:</span>
+          <span id="stage-example" class="text-[#E07A5F] font-semibold">Lys–Ala–His–Gly–Lys–Val...</span>
+        </div>
+      </div>
+
+      <!-- Color Legend -->
+      <div class="pt-1 border-t border-white/10 grid grid-cols-2 gap-1.5 text-[11px] text-[#CBD5E1]">
+        <div class="flex items-center gap-1.5">
+          <span class="w-2.5 h-2.5 rounded-full bg-[#38BDF8] inline-block shrink-0"></span>
+          <span>Hydrophilic R-Group</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <span class="w-2.5 h-2.5 rounded-full bg-[#E07A5F] inline-block shrink-0"></span>
+          <span>Hydrophobic R-Group</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <span class="w-2.5 h-2.5 rounded-full bg-[#FACC15] inline-block shrink-0"></span>
+          <span>Disulfide Bridge (-S-S-)</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <span class="w-3 h-0.5 bg-[#7DD3FC] inline-block shrink-0"></span>
+          <span>Hydrogen Bonds</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Subunit Floating Legend (Visible only in Quaternary Mode) -->
+  <div id="quaternary-badge" class="hidden fixed top-24 right-5 z-20 glass-panel rounded-2xl p-3.5 pointer-events-auto">
+    <p class="text-[11px] font-bold uppercase tracking-wider text-[#94A3B8] mb-2">Hemoglobin (α₂β₂)</p>
+    <div class="space-y-1.5 text-xs font-semibold">
+      <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-[#0EA5E9]"></span> Subunit α₁ + Heme</div>
+      <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-[#2DD4BF]"></span> Subunit α₂ + Heme</div>
+      <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-[#E07A5F]"></span> Subunit β₁ + Heme</div>
+      <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-[#F59E0B]"></span> Subunit β₂ + Heme</div>
+    </div>
+  </div>
+
+  <!-- Bottom Stage Navigation Bar -->
+  <footer class="fixed bottom-0 left-0 right-0 z-20 p-3 sm:p-5 pointer-events-none flex flex-col items-center gap-2">
+    <div class="glass-panel rounded-2xl p-1.5 sm:p-2 pointer-events-auto flex items-center gap-1.5 sm:gap-2 max-w-full overflow-x-auto no-scrollbar">
+      <button id="btn-stage-primary" onclick="setStage('primary')" class="stage-btn active rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-bold whitespace-nowrap border border-transparent">
+        1. Primary
+      </button>
+      <button id="btn-stage-alpha" onclick="setStage('alpha')" class="stage-btn rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-bold whitespace-nowrap border border-transparent text-[#CBD5E1]">
+        2a. α-Helix
+      </button>
+      <button id="btn-stage-beta" onclick="setStage('beta')" class="stage-btn rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-bold whitespace-nowrap border border-transparent text-[#CBD5E1]">
+        2b. β-Sheet
+      </button>
+      <button id="btn-stage-tertiary" onclick="setStage('tertiary')" class="stage-btn rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-bold whitespace-nowrap border border-transparent text-[#CBD5E1]">
+        3. Tertiary Fold
+      </button>
+      <button id="btn-stage-quaternary" onclick="setStage('quaternary')" class="stage-btn rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-bold whitespace-nowrap border border-transparent text-[#CBD5E1]">
+        4. Quaternary (α₂β₂)
+      </button>
+    </div>
+    <p class="text-[11px] text-[#94A3B8] hidden sm:block">
+      Drag to rotate 360° · Scroll or pinch to zoom · Click any stage to morph protein structure
+    </p>
+  </footer>
+
+  <!-- WebGL Fallback Message Box (Hidden unless WebGL fails) -->
+  <div id="error-box" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-[#0B1F27] p-6">
+    <div class="glass-panel rounded-2xl p-6 max-w-md text-center">
+      <i class="fa-solid fa-triangle-exclamation text-3xl text-[#E07A5F] mb-3"></i>
+      <h2 class="text-xl font-bold mb-2">3D Renderer Unavailable</h2>
+      <p id="error-message" class="text-sm text-[#CBD5E1]">Your browser could not initialize WebGL for the 3D molecular simulation.</p>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * ============================================================================
+     * INTERACTIVE 3D PROTEIN CONFIGURATION ENGINE (Three.js)
+     * Models Primary, Secondary (α-Helix & β-Pleated Sheet), Tertiary (3D Fold),
+     * Quaternary (Hemoglobin α₂β₂), and Thermal Denaturation with smooth lerping.
+     * ============================================================================
+     */
+
+    // --- Educational Metadata for Each Structural Stage ---
+    const STAGE_INFO = {
+      primary: {
+        badge: "Level 1 of 4 · Sequence",
+        title: "Primary Structure",
+        desc: "Linear sequence of L-α-amino acids joined by covalent peptide bonds. Encoded directly by DNA; dictates all higher levels of 3D folding.",
+        bond: "Covalent Peptide Bonds (–CO–NH–)",
+        example: "Polypeptide Chain (N → C Terminus)"
+      },
+      alpha: {
+        badge: "Level 2a of 4 · Local Coil",
+        title: "Secondary: Alpha-Helix (α-Helix)",
+        desc: "Right-handed spiral backbone stabilized by intramolecular hydrogen bonds every 3.6 residues, with R-groups projecting outward.",
+        bond: "Intramolecular H-Bonds (Parallel to Axis)",
+        example: "α-Keratin & Globin Helices"
+      },
+      beta: {
+        badge: "Level 2b of 4 · Pleated Strand",
+        title: "Secondary: Beta-Pleated Sheet",
+        desc: "Extended antiparallel zigzag polypeptide strands linked side-by-side through intermolecular hydrogen bonds, giving high tensile strength.",
+        bond: "Intermolecular H-Bonds (Cross-Strand)",
+        example: "Silk Fibroin & Immunoglobulin Core"
+      },
+      tertiary: {
+        badge: "Level 3 of 4 · 3D Globular Fold",
+        title: "Tertiary Structure",
+        desc: "Overall 3D folding of a single polypeptide. Nonpolar R-groups tuck into a hydrophobic core while polar groups face outward.",
+        bond: "Disulfide (-S-S-), Ionic, H-Bond & Hydrophobic",
+        example: "Myoglobin / Single β-Globin Chain"
+      },
+      quaternary: {
+        badge: "Level 4 of 4 · Oligomeric Assembly",
+        title: "Quaternary Structure",
+        desc: "Specific association of four folded polypeptide subunits (α₁, α₂, β₁, β₂) into a functional multi-chain oligomer with 4 oxygen-binding Heme groups.",
+        bond: "Non-Covalent Subunit Interactions",
+        example: "Human Hemoglobin Tetramer (α₂β₂)"
+      }
+    };
+
+    // --- Global Simulation State ---
+    let currentStage = 'primary';
+    let isDenatured = false;
+    let showBonds = true;
+    let autoPlay = false;
+    let autoPlayTimer = 0;
+    let infoCollapsed = false;
+
+    const STAGE_SEQUENCE = ['primary', 'alpha', 'beta', 'tertiary', 'quaternary'];
+    const RESIDUES_PER_CHAIN = 64;
+    const NUM_CHAINS = 4; // Chain 0 = Hero Chain; Chains 1..3 = Quaternary Oligomer Partners
+
+    // --- Three.js Core Objects ---
+    let scene, camera, renderer, rootGroup;
+    let chains = []; // Holds meshes and target coordinates for all 4 subunits
+    let bondCylinders = []; // Pool of dynamic cylinders for H-bonds, Disulfide, and Ionic bridges
+    let hemeMeshes = []; // 4 Heme discs for Quaternary Hemoglobin
+
+    // --- Camera Orbit & Zoom State ---
+    let isDragging = false;
+    let prevPointer = { x: 0, y: 0 };
+    let targetRotX = 0.18;
+    let targetRotY = -0.35;
+    let currentRotX = 0.18;
+    let currentRotY = -0.35;
+    let targetZoom = 21;
+    let currentZoom = 21;
+    let initialPinchDist = null;
+
+    // Reusable math temporaries to avoid garbage collection overhead
+    const tmpVecA = new THREE.Vector3();
+    const tmpVecB = new THREE.Vector3();
+    const tmpMid = new THREE.Vector3();
+    const tmpDir = new THREE.Vector3();
+    const tmpUp = new THREE.Vector3(0, 1, 0);
+    const tmpQuat = new THREE.Quaternion();
+
+    /**
+     * Precomputes exact 3D coordinates for every amino acid residue across all
+     * configuration stages so transitions morph smoothly in real time.
+     */
+    function computeStageCoordinates(chainIndex) {
+      const N = RESIDUES_PER_CHAIN;
+      const data = {
+        primary: [],
+        alpha: [],
+        beta: [],
+        tertiary: [],
+        quaternary: [],
+        denatured: [],
+        rPrimary: [],
+        rAlpha: [],
+        rBeta: [],
+        rTertiary: [],
+        rQuaternary: [],
+        rDenatured: [],
+        isHydrophobic: [],
+        isCysteine: []
+      };
+
+      // Assign realistic alternating biochemical properties along the sequence
+      for (let i = 0; i < N; i++) {
+        // Every ~3-4 residues alternates hydrophobic vs hydrophilic to drive core folding
+        const hydrophobic = (i % 4 === 1 || i % 7 === 2);
+        const cysteine = (i === 10 || i === 54); // Pair that forms covalent -S-S- bridge in Tertiary!
+        data.isHydrophobic.push(hydrophobic);
+        data.isCysteine.push(cysteine);
+
+        // ------------------------------------------------------------------
+        // 1. PRIMARY STRUCTURE: Extended linear chain along X-axis
+        // ------------------------------------------------------------------
+        const px = ((i / (N - 1)) - 0.5) * 26;
+        const py = Math.sin(i * 0.55) * 0.75;
+        const pz = Math.cos(i * 0.35) * 0.45;
+        data.primary.push(new THREE.Vector3(px, py, pz));
+
+        const rSign = (i % 2 === 0) ? 1 : -1;
+        data.rPrimary.push(new THREE.Vector3(px, py + rSign * 0.85, pz + 0.25));
+
+        // ------------------------------------------------------------------
+        // 2a. SECONDARY STRUCTURE: Right-Handed Alpha-Helix (Vertical Y-axis)
+        // 3.6 residues per turn, outward projecting R-groups
+        // ------------------------------------------------------------------
+        const helixAngle = i * ((2 * Math.PI) / 3.6);
+        const helixRadius = 2.15;
+        const helixY = ((i / (N - 1)) - 0.5) * 16.5;
+        const ax = Math.cos(helixAngle) * helixRadius;
+        const az = Math.sin(helixAngle) * helixRadius;
+        data.alpha.push(new THREE.Vector3(ax, helixY, az));
+
+        // Outward radial R-group vector
+        data.rAlpha.push(new THREE.Vector3(
+          Math.cos(helixAngle) * (helixRadius + 0.95),
+          helixY + 0.1,
+          Math.sin(helixAngle) * (helixRadius + 0.95)
+        ));
+
+        // ------------------------------------------------------------------
+        // 2b. SECONDARY STRUCTURE: Antiparallel Beta-Pleated Sheet
+        // 4 zigzag strands of 16 residues each in X-Y plane with Z-pleats
+        // ------------------------------------------------------------------
+        const numStrands = 4;
+        const perStrand = N / numStrands; // 16
+        const strandIdx = Math.floor(i / perStrand);
+        const posInStrand = i % perStrand;
+        const isEvenStrand = (strandIdx % 2 === 0);
+
+        // Antiparallel direction along Y
+        const normY = (posInStrand / (perStrand - 1)) - 0.5;
+        const by = (isEvenStrand ? normY : -normY) * 12.5;
+        const bx = (strandIdx - (numStrands - 1) / 2) * 3.1 + Math.sin(posInStrand * Math.PI) * 0.18;
+        // Classic accordion pleat in Z
+        const pleatZ = ((posInStrand % 2 === 0) ? 1 : -1) * 0.58;
+        data.beta.push(new THREE.Vector3(bx, by, pleatZ));
+
+        // R-groups alternate cleanly above (+Z) and below (-Z) the sheet
+        const betaRDir = (posInStrand % 2 === 0) ? 1 : -1;
+        data.rBeta.push(new THREE.Vector3(bx, by, pleatZ + betaRDir * 0.9));
+
+        // ------------------------------------------------------------------
+        // 3. TERTIARY STRUCTURE: Compact 3D Globular Domain (3-Helix Bundle)
+        // Hydrophobic R-groups buried inside; hydrophilic R-groups on surface
+        // ------------------------------------------------------------------
+        let tx = 0, ty = 0, tz = 0;
+        if (i < 20) {
+          // Segment 1: Tilted α-helix A
+          const t = i / 19;
+          const ang = i * 1.72;
+          tx = -2.1 + t * 1.4 + Math.cos(ang) * 0.95;
+          ty = -3.2 + t * 6.4;
+          tz = 1.6 - t * 1.2 + Math.sin(ang) * 0.95;
+        } else if (i < 24) {
+          // Flexible Beta-Turn 1
+          const t = (i - 19) / 5;
+          tx = -0.7 + Math.sin(t * Math.PI) * 1.4 + t * 2.5;
+          ty = 3.2 + Math.sin(t * Math.PI) * 1.1;
+          tz = 0.4 - t * 2.0;
+        } else if (i < 42) {
+          // Segment 2: Tilted α-helix B
+          const idx = i - 24;
+          const t = idx / 17;
+          const ang = idx * 1.72;
+          tx = 1.8 - t * 0.5 + Math.cos(ang) * 0.95;
+          ty = 3.2 - t * 6.4;
+          tz = -1.6 + t * 0.6 + Math.sin(ang) * 0.95;
+        } else if (i < 46) {
+          // Flexible Beta-Turn 2
+          const t = (i - 41) / 5;
+          tx = 1.3 - t * 1.8;
+          ty = -3.2 - Math.sin(t * Math.PI) * 1.0;
+          tz = -1.0 + t * 2.6;
+        } else {
+          // Segment 3: Tilted α-helix C
+          const idx = i - 46;
+          const t = idx / 17;
+          const ang = idx * 1.72;
+          tx = -0.5 + t * 1.2 + Math.cos(ang) * 0.95;
+          ty = -3.2 + t * 5.8;
+          tz = 1.6 - t * 0.4 + Math.sin(ang) * 0.95;
+        }
+
+        // Bring Cysteine 10 and Cysteine 54 close together to form a covalent Disulfide Bridge!
+        if (i === 10) { tx = -0.55; ty = 0.25; tz = 0.65; }
+        if (i === 54) { tx = 0.55;  ty = 0.25; tz = 0.65; }
+
+        const tPos = new THREE.Vector3(tx, ty, tz);
+        data.tertiary.push(tPos);
+
+        // Hydrophobic core vs. Hydrophilic exterior R-group orientation
+        const radialOut = tPos.clone().normalize();
+        if (radialOut.lengthSq() < 0.01) radialOut.set(0, 1, 0);
+        const rOffset = hydrophobic
+          ? radialOut.clone().multiplyScalar(-0.72) // Tucked inward into core
+          : radialOut.clone().multiplyScalar(0.85); // Exposed outward to water
+        data.rTertiary.push(tPos.clone().add(rOffset));
+
+        // ------------------------------------------------------------------
+        // 4. QUATERNARY STRUCTURE: Hemoglobin Tetramer (α₁, α₂, β₁, β₂)
+        // Four folded tertiary subunits docked at tetrahedral vertices
+        // ------------------------------------------------------------------
+        const subunitOffsets = [
+          new THREE.Vector3(-2.75,  2.35,  1.55), // α1
+          new THREE.Vector3( 2.75, -2.35,  1.55), // α2
+          new THREE.Vector3( 2.65,  2.25, -1.65), // β1
+          new THREE.Vector3(-2.65, -2.25, -1.65)  // β2
+        ];
+        // Slight subunit-specific rotation for organic quaternary symmetry
+        const rotAngles = [0, Math.PI, Math.PI * 0.5, -Math.PI * 0.5];
+        const qLocal = tPos.clone().multiplyScalar(0.76);
+        qLocal.applyAxisAngle(new THREE.Vector3(0, 1, 0), rotAngles[chainIndex]);
+        const qPos = qLocal.add(subunitOffsets[chainIndex]);
+        data.quaternary.push(qPos);
+
+        const qRLocal = rOffset.clone().multiplyScalar(0.76);
+        qRLocal.applyAxisAngle(new THREE.Vector3(0, 1, 0), rotAngles[chainIndex]);
+        data.rQuaternary.push(qPos.clone().add(qRLocal));
+
+        // ------------------------------------------------------------------
+        // DENATURED STATE: Disordered Random Coil (Thermal Unfolding)
+        // ------------------------------------------------------------------
+        const dAngle = i * 0.42 + chainIndex * 1.5;
+        const dx = Math.sin(dAngle) * 6.5 + Math.cos(i * 0.19) * 4.5 + (chainIndex - 1.5) * 2.5;
+        const dy = Math.cos(i * 0.27) * 5.2 + Math.sin(i * 0.61) * 1.8;
+        const dz = Math.sin(i * 0.33 + 1.1) * 5.8;
+        const dPos = new THREE.Vector3(dx, dy, dz);
+        data.denatured.push(dPos);
+        data.rDenatured.push(dPos.clone().add(new THREE.Vector3(0.6, 0.6, 0.3)));
+      }
+
+      return data;
+    }
+
+    /**
+     * Initializes the Three.js scene, lighting, molecular geometries, and event listeners.
+     */
+    function initScene() {
+      try {
+        const canvas = document.getElementById('protein-canvas');
+        const wrapper = document.getElementById('canvas-wrapper');
+
+        scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x0B1F27, 0.015);
+
+        camera = new THREE.PerspectiveCamera(45, wrapper.clientWidth / wrapper.clientHeight, 0.1, 150);
+        camera.position.set(0, 0, currentZoom);
+
+        renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.setSize(wrapper.clientWidth, wrapper.clientHeight);
+        renderer.outputEncoding = THREE.sRGBEncoding;
+
+        // Three-point scientific studio lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.58);
+        scene.add(ambientLight);
+
+        const keyLight = new THREE.DirectionalLight(0xffffff, 0.95);
+        keyLight.position.set(12, 18, 16);
+        scene.add(keyLight);
+
+        const rimLight = new THREE.DirectionalLight(0x38BDF8, 0.55);
+        rimLight.position.set(-14, -10, -12);
+        scene.add(rimLight);
+
+        const warmFill = new THREE.PointLight(0xE07A5F, 0.45, 45);
+        warmFill.position.set(0, -12, 10);
+        scene.add(warmFill);
+
+        rootGroup = new THREE.Group();
+        scene.add(rootGroup);
+
+        buildMolecularMeshes();
+        setupInteractionListeners(wrapper);
+        window.addEventListener('resize', onWindowResize);
+      } catch (err) {
+        console.error("WebGL Initialization Error:", err);
+        document.getElementById('error-box').classList.remove('hidden');
+        document.getElementById('error-message').textContent = err.message || "Unable to start 3D graphics context.";
+      }
+    }
+
+    /**
+     * Constructs shared geometries and meshes for amino acid monomers, peptide bonds,
+     * R-group side chains, Heme prosthetic groups, and non-covalent interaction rods.
+     */
+    function buildMolecularMeshes() {
+      const alphaSphereGeo = new THREE.SphereGeometry(0.32, 18, 18);
+      const rGroupSphereGeo = new THREE.SphereGeometry(0.22, 14, 14);
+      const peptideCylGeo = new THREE.CylinderGeometry(0.11, 0.11, 1, 10);
+      const rStemCylGeo = new THREE.CylinderGeometry(0.055, 0.055, 1, 8);
+      const hBondCylGeo = new THREE.CylinderGeometry(0.045, 0.045, 1, 8);
+
+      // Subunit backbone palette for Quaternary differentiation
+      const subunitColors = [0x0EA5E9, 0x2DD4BF, 0xE07A5F, 0xF59E0B];
+
+      const matHydrophobic = new THREE.MeshStandardMaterial({ color: 0xE07A5F, roughness: 0.35, metalness: 0.1 });
+      const matHydrophilic = new THREE.MeshStandardMaterial({ color: 0x38BDF8, roughness: 0.35, metalness: 0.1 });
+      const matCysteine = new THREE.MeshStandardMaterial({ color: 0xFACC15, emissive: 0x854D0E, emissiveIntensity: 0.4, roughness: 0.25 });
+      const matPeptide = new THREE.MeshStandardMaterial({ color: 0xCBD5E1, roughness: 0.4, metalness: 0.2 });
+      const matStem = new THREE.MeshStandardMaterial({ color: 0x64748B, roughness: 0.5 });
+
+      for (let c = 0; c < NUM_CHAINS; c++) {
+        const coords = computeStageCoordinates(c);
+        const chainGroup = new THREE.Group();
+        rootGroup.add(chainGroup);
+
+        const backboneMat = new THREE.MeshStandardMaterial({
+          color: c === 0 ? 0xFAF9F6 : subunitColors[c],
+          roughness: 0.3,
+          metalness: 0.15
+        });
+
+        const beads = [];
+        const rSpheres = [];
+        const rStems = [];
+        const peptideBonds = [];
+        const currentPos = [];
+        const currentRPos = [];
+
+        for (let i = 0; i < RESIDUES_PER_CHAIN; i++) {
+          // Alpha-Carbon Backbone Bead
+          const bead = new THREE.Mesh(alphaSphereGeo, backboneMat);
+          bead.position.copy(coords.primary[i]);
+          chainGroup.add(bead);
+          beads.push(bead);
+          currentPos.push(coords.primary[i].clone());
+
+          // R-Group Side Chain Sphere
+          let rMat = coords.isHydrophobic[i] ? matHydrophobic : matHydrophilic;
+          if (coords.isCysteine[i]) rMat = matCysteine;
+          const rSphere = new THREE.Mesh(rGroupSphereGeo, rMat);
+          rSphere.position.copy(coords.rPrimary[i]);
+          chainGroup.add(rSphere);
+          rSpheres.push(rSphere);
+          currentRPos.push(coords.rPrimary[i].clone());
+
+          // Stem connecting Cα to R-group
+          const stem = new THREE.Mesh(rStemCylGeo, matStem);
+          chainGroup.add(stem);
+          rStems.push(stem);
+
+          // Covalent Peptide Bond cylinder to next residue
+          if (i < RESIDUES_PER_CHAIN - 1) {
+            const pBond = new THREE.Mesh(peptideCylGeo, matPeptide);
+            chainGroup.add(pBond);
+            peptideBonds.push(pBond);
+          }
+        }
+
+        // Heme Prosthetic Group (Iron-Porphyrin Disc for Hemoglobin Quaternary View)
+        const hemeGeo = new THREE.CylinderGeometry(0.85, 0.85, 0.22, 24);
+        const hemeMat = new THREE.MeshStandardMaterial({
+          color: 0xEF4444,
+          emissive: 0x991B1B,
+          emissiveIntensity: 0.55,
+          roughness: 0.25,
+          metalness: 0.3
+        });
+        const hemeMesh = new THREE.Mesh(hemeGeo, hemeMat);
+        hemeMesh.rotation.x = Math.PI / 3;
+        hemeMesh.visible = false;
+        chainGroup.add(hemeMesh);
+        hemeMeshes.push(hemeMesh);
+
+        // Hide partner subunits 1..3 initially (only shown in Quaternary or multi-chain Denatured)
+        if (c > 0) {
+          chainGroup.scale.setScalar(0.001);
+          chainGroup.visible = false;
+        }
+
+        chains.push({
+          group: chainGroup,
+          coords,
+          beads,
+          rSpheres,
+          rStems,
+          peptideBonds,
+          currentPos,
+          currentRPos,
+          backboneMat,
+          subunitColor: subunitColors[c]
+        });
+      }
+
+      // Pool of Dynamic Cylinders for Hydrogen Bonds, Disulfide Bridge, and Ionic Salt Bridge
+      const matHBond = new THREE.MeshBasicMaterial({ color: 0x7DD3FC, transparent: true, opacity: 0.72 });
+      const matDisulfide = new THREE.MeshStandardMaterial({ color: 0xFACC15, emissive: 0xEAB308, emissiveIntensity: 0.75 });
+      const matIonic = new THREE.MeshBasicMaterial({ color: 0xF472B6, transparent: true, opacity: 0.85 });
+
+      for (let k = 0; k < 70; k++) {
+        const cyl = new THREE.Mesh(hBondCylGeo, matHBond);
+        cyl.visible = false;
+        rootGroup.add(cyl);
+        bondCylinders.push({ mesh: cyl, matHBond, matDisulfide, matIonic });
+      }
+    }
+
+    /**
+     * Positions and orients a cylinder mesh between two 3D points.
+     */
+    function alignCylinder(mesh, pointA, pointB, thicknessScale = 1) {
+      tmpDir.subVectors(pointB, pointA);
+      const len = tmpDir.length();
+      if (len < 0.0001) {
+        mesh.visible = false;
+        return;
+      }
+      mesh.visible = true;
+      tmpMid.addVectors(pointA, pointB).multiplyScalar(0.5);
+      mesh.position.copy(tmpMid);
+      mesh.scale.set(thicknessScale, len, thicknessScale);
+      tmpQuat.setFromUnitVectors(tmpUp, tmpDir.normalize());
+      mesh.quaternion.copy(tmpQuat);
+    }
+
+    /**
+     * Updates dynamic non-covalent & tertiary stabilizing bonds based on the active stage.
+     */
+    function updateStabilizingBonds() {
+      // Hide all pooled bond cylinders first
+      for (let k = 0; k < bondCylinders.length; k++) {
+        bondCylinders[k].mesh.visible = false;
+      }
+
+      if (!showBonds || isDenatured) return;
+
+      const hero = chains[0];
+      let poolIdx = 0;
+
+      if (currentStage === 'alpha') {
+        // Intramolecular Hydrogen Bonds between residue i and i+4 along the helix
+        for (let i = 0; i < RESIDUES_PER_CHAIN - 4 && poolIdx < bondCylinders.length; i += 2) {
+          const item = bondCylinders[poolIdx++];
+          item.mesh.material = item.matHBond;
+          alignCylinder(item.mesh, hero.currentPos[i], hero.currentPos[i + 4], 1.15);
+        }
+      } else if (currentStage === 'beta') {
+        // Intermolecular Hydrogen Bonds bridging adjacent antiparallel β-strands
+        const perStrand = RESIDUES_PER_CHAIN / 4; // 16
+        for (let s = 0; s < 3; s++) {
+          for (let j = 1; j < perStrand - 1 && poolIdx < bondCylinders.length; j += 2) {
+            const idxA = s * perStrand + j;
+            // Antiparallel partner index on next strand
+            const idxB = (s + 1) * perStrand + (perStrand - 1 - j);
+            const item = bondCylinders[poolIdx++];
+            item.mesh.material = item.matHBond;
+            alignCylinder(item.mesh, hero.currentPos[idxA], hero.currentPos[idxB], 1.15);
+          }
+        }
+      } else if (currentStage === 'tertiary') {
+        // 1. Covalent Disulfide Bridge (-S-S-) between Cysteine 10 and Cysteine 54
+        if (poolIdx < bondCylinders.length) {
+          const item = bondCylinders[poolIdx++];
+          item.mesh.material = item.matDisulfide;
+          alignCylinder(item.mesh, hero.currentPos[10], hero.currentPos[54], 2.4);
+        }
+        // 2. Ionic Salt Bridge between Helix B (residue 31) and Helix C (residue 50)
+        if (poolIdx < bondCylinders.length) {
+          const item = bondCylinders[poolIdx++];
+          item.mesh.material = item.matIonic;
+          alignCylinder(item.mesh, hero.currentRPos[31], hero.currentRPos[50], 1.6);
+        }
+        // 3. Internal Helix Hydrogen Bonds
+        for (let i = 2; i < 16 && poolIdx < bondCylinders.length; i += 4) {
+          const item = bondCylinders[poolIdx++];
+          item.mesh.material = item.matHBond;
+          alignCylinder(item.mesh, hero.currentPos[i], hero.currentPos[i + 4], 1.0);
+        }
+      }
+    }
+
+    /**
+     * Main 60 FPS Animation Loop: smoothly interpolates molecular geometry and handles idle motion.
+     */
+    function animate(time) {
+      requestAnimationFrame(animate);
+
+      const t = (time || 0) * 0.001;
+
+      // Auto-Fold Guided Tour timer
+      if (autoPlay) {
+        autoPlayTimer += 0.016;
+        if (autoPlayTimer > 4.2) {
+          autoPlayTimer = 0;
+          const nextIdx = (STAGE_SEQUENCE.indexOf(currentStage) + 1) % STAGE_SEQUENCE.length;
+          setStage(STAGE_SEQUENCE[nextIdx], true);
+        }
+      }
+
+      // Smooth camera rotation & zoom damping
+      if (!isDragging) {
+        targetRotY += 0.0032; // Gentle continuous 3D turntable rotation
+      }
+      currentRotX += (targetRotX - currentRotX) * 0.08;
+      currentRotY += (targetRotY - currentRotY) * 0.08;
+      currentZoom += (targetZoom - currentZoom) * 0.08;
+
+      if (rootGroup && camera) {
+        rootGroup.rotation.x = currentRotX;
+        rootGroup.rotation.y = currentRotY;
+        camera.position.z = currentZoom;
+      }
+
+      // Update each polypeptide chain
+      for (let c = 0; c < NUM_CHAINS; c++) {
+        const chain = chains[c];
+        const isQuatActive = (currentStage === 'quaternary');
+        const shouldShowChain = (c === 0) || isQuatActive;
+
+        // Smooth scale transition for subunits 1..3
+        const targetScale = shouldShowChain ? 1.0 : 0.001;
+        const newScale = chain.group.scale.x + (targetScale - chain.group.scale.x) * 0.08;
+        chain.group.scale.setScalar(newScale);
+        chain.group.visible = newScale > 0.02;
+
+        // Color hero chain distinctly when part of Quaternary α₂β₂ assembly
+        const desiredColor = isQuatActive ? chain.subunitColor : 0xFAF9F6;
+        chain.backboneMat.color.lerp(new THREE.Color(desiredColor), 0.08);
+
+        if (!chain.group.visible) continue;
+
+        const targetBackboneArr = isDenatured ? chain.coords.denatured : chain.coords[currentStage];
+        const targetRArr = isDenatured
+          ? chain.coords.rDenatured
+          : chain.coords['r' + currentStage.charAt(0).toUpperCase() + currentStage.slice(1)];
+
+        const lerpSpeed = isDenatured ? 0.045 : 0.065;
+
+        for (let i = 0; i < RESIDUES_PER_CHAIN; i++) {
+          // Subtle thermal vibration (amplified when denatured by heat)
+          const jitterAmp = isDenatured ? 0.14 : 0.025;
+          const jx = Math.sin(t * (isDenatured ? 7 : 2.2) + i * 0.7 + c) * jitterAmp;
+          const jy = Math.cos(t * (isDenatured ? 6.5 : 2.0) + i * 0.5 + c) * jitterAmp;
+          const jz = Math.sin(t * (isDenatured ? 7.2 : 1.8) + i * 0.9 + c) * jitterAmp;
+
+          tmpVecA.copy(targetBackboneArr[i]).add(tmpVecB.set(jx, jy, jz));
+          chain.currentPos[i].lerp(tmpVecA, lerpSpeed);
+          chain.beads[i].position.copy(chain.currentPos[i]);
+
+          tmpVecA.copy(targetRArr[i]).add(tmpVecB.set(jx, jy, jz));
+          chain.currentRPos[i].lerp(tmpVecA, lerpSpeed);
+          chain.rSpheres[i].position.copy(chain.currentRPos[i]);
+
+          // Update R-group stem
+          alignCylinder(chain.rStems[i], chain.currentPos[i], chain.currentRPos[i], 1);
+
+          // Update covalent peptide bond to next monomer
+          if (i < RESIDUES_PER_CHAIN - 1) {
+            alignCylinder(chain.peptideBonds[i], chain.currentPos[i], chain.currentPos[i + 1], 1);
+          }
+        }
+
+        // Update Heme prosthetic group in Quaternary mode
+        const heme = hemeMeshes[c];
+        if (isQuatActive && !isDenatured) {
+          heme.visible = true;
+          // Position Heme inside the subunit pocket (near residue 30)
+          heme.position.copy(chain.currentPos[30]);
+          const pulse = 1 + Math.sin(t * 3.5 + c) * 0.08;
+          heme.scale.set(pulse, 1, pulse);
+        } else {
+          heme.visible = false;
+        }
+      }
+
+      updateStabilizingBonds();
+
+      if (renderer && scene && camera) {
+        renderer.render(scene, camera);
+      }
+    }
+
+    /**
+     * Switches the active protein configuration level and updates the UI card.
+     */
+    function setStage(stageKey, fromAutoPlay = false) {
+      if (!fromAutoPlay && autoPlay) {
+        toggleAutoPlay();
+      }
+      if (isDenatured) {
+        isDenatured = false;
+        updateDenatureButtonUI();
+      }
+
+      currentStage = stageKey;
+
+      // Update active button styling
+      STAGE_SEQUENCE.forEach((key) => {
+        const btn = document.getElementById('btn-stage-' + key);
+        if (btn) {
+          if (key === stageKey) {
+            btn.classList.add('active');
+            btn.classList.remove('text-[#CBD5E1]');
+          } else {
+            btn.classList.remove('active');
+            btn.classList.add('text-[#CBD5E1]');
+          }
+        }
+      });
+
+      // Adjust optimal viewing distance per structure size
+      if (stageKey === 'primary') targetZoom = 23;
+      else if (stageKey === 'alpha' || stageKey === 'beta') targetZoom = 20;
+      else if (stageKey === 'tertiary') targetZoom = 14.5;
+      else if (stageKey === 'quaternary') targetZoom = 16.5;
+
+      // Show/Hide Quaternary Hemoglobin Subunit Badge
+      const quatBadge = document.getElementById('quaternary-badge');
+      if (stageKey === 'quaternary') quatBadge.classList.remove('hidden');
+      else quatBadge.classList.add('hidden');
+
+      // Update Educational Info Panel
+      const info = STAGE_INFO[stageKey];
+      document.getElementById('stage-badge').textContent = info.badge;
+      document.getElementById('stage-title').textContent = info.title;
+      document.getElementById('stage-desc').textContent = info.desc;
+      document.getElementById('stage-bond').textContent = info.bond;
+      document.getElementById('stage-example').textContent = info.example;
+    }
+
+    /**
+     * Toggles Thermal/Acid Denaturation: disrupts 2°, 3°, and 4° weak bonds while
+     * preserving the primary covalent peptide backbone.
+     */
+    function toggleDenature() {
+      if (autoPlay) toggleAutoPlay();
+      isDenatured = !isDenatured;
+      updateDenatureButtonUI();
+
+      if (isDenatured) {
+        document.getElementById('stage-badge').textContent = "Denaturation · Unfolding";
+        document.getElementById('stage-title').textContent = "Denatured Random Coil";
+        document.getElementById('stage-desc').textContent = "Heat, extreme pH, or urea disrupts weak hydrogen, ionic, and hydrophobic bonds—destroying biological function while leaving primary peptide bonds intact.";
+        document.getElementById('stage-bond').textContent = "Only 1° Peptide Bonds Remain";
+        document.getElementById('stage-example').textContent = "Loss of Native 3D Conformation";
+        targetZoom = 22;
+      } else {
+        setStage(currentStage);
+      }
+    }
+
+    function updateDenatureButtonUI() {
+      const btn = document.getElementById('btn-denature');
+      const txt = document.getElementById('text-denature');
+      if (isDenatured) {
+        btn.classList.add('denature-active');
+        txt.textContent = "Renature (Fold)";
+      } else {
+        btn.classList.remove('denature-active');
+        txt.textContent = "Denature";
+      }
+    }
+
+    /**
+     * Toggles visibility of Hydrogen Bonds, Disulfide Bridges, and Ionic Salt Bridges.
+     */
+    function toggleBonds() {
+      showBonds = !showBonds;
+      document.getElementById('text-bonds').textContent = showBonds ? "Bonds: ON" : "Bonds: OFF";
+    }
+
+    /**
+     * Toggles hands-free guided folding tour across all configuration stages.
+     */
+    function toggleAutoPlay() {
+      autoPlay = !autoPlay;
+      autoPlayTimer = 0;
+      const icon = document.getElementById('icon-autoplay');
+      const txt = document.getElementById('text-autoplay');
+      if (autoPlay) {
+        icon.className = "fa-solid fa-pause text-[#38BDF8]";
+        txt.textContent = "Pause Tour";
+      } else {
+        icon.className = "fa-solid fa-play text-[#E07A5F]";
+        txt.textContent = "Auto-Fold Tour";
+      }
+    }
+
+    /**
+     * Collapses or expands the educational info card on smaller screens.
+     */
+    function toggleInfoBody() {
+      infoCollapsed = !infoCollapsed;
+      const body = document.getElementById('info-body');
+      const icon = document.getElementById('icon-toggle-info');
+      if (infoCollapsed) {
+        body.classList.add('hidden');
+        icon.className = "fa-solid fa-chevron-down text-xs";
+      } else {
+        body.classList.remove('hidden');
+        icon.className = "fa-solid fa-chevron-up text-xs";
+      }
+    }
+
+    /**
+     * Resets camera orientation and zoom level smoothly.
+     */
+    function resetCamera() {
+      targetRotX = 0.18;
+      targetRotY = -0.35;
+      setStage(currentStage);
+    }
+
+    /**
+     * Configures Mouse and Multi-Touch Orbit/Zoom Interaction Listeners.
+     */
+    function setupInteractionListeners(el) {
+      // Mouse Drag Rotation
+      el.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        prevPointer = { x: e.clientX, y: e.clientY };
+      });
+      window.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const dx = e.clientX - prevPointer.x;
+        const dy = e.clientY - prevPointer.y;
+        targetRotY += dx * 0.008;
+        targetRotX = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, targetRotX + dy * 0.008));
+        prevPointer = { x: e.clientX, y: e.clientY };
+      });
+      window.addEventListener('mouseup', () => {
+        isDragging = false;
+      });
+
+      // Mouse Wheel Zoom
+      el.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        targetZoom = Math.max(8, Math.min(36, targetZoom + e.deltaY * 0.015));
+      }, { passive: false });
+
+      // Touch Drag & Pinch Zoom
+      el.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 1) {
+          isDragging = true;
+          prevPointer = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        } else if (e.touches.length === 2) {
+          isDragging = false;
+          const dx = e.touches[0].clientX - e.touches[1].clientX;
+          const dy = e.touches[0].clientY - e.touches[1].clientY;
+          initialPinchDist = Math.hypot(dx, dy);
+        }
+      }, { passive: true });
+
+      el.addEventListener('touchmove', (e) => {
+        if (e.touches.length === 1 && isDragging) {
+          const dx = e.touches[0].clientX - prevPointer.x;
+          const dy = e.touches[0].clientY - prevPointer.y;
+          targetRotY += dx * 0.009;
+          targetRotX = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, targetRotX + dy * 0.009));
+          prevPointer = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        } else if (e.touches.length === 2 && initialPinchDist) {
+          const dx = e.touches[0].clientX - e.touches[1].clientX;
+          const dy = e.touches[0].clientY - e.touches[1].clientY;
+          const dist = Math.hypot(dx, dy);
+          const delta = initialPinchDist - dist;
+          targetZoom = Math.max(8, Math.min(36, targetZoom + delta * 0.04));
+          initialPinchDist = dist;
+        }
+      }, { passive: true });
+
+      el.addEventListener('touchend', () => {
+        isDragging = false;
+        initialPinchDist = null;
+      });
+    }
+
+    /**
+     * Responsively resizes the WebGL canvas and updates camera aspect ratio.
+     */
+    function onWindowResize() {
+      const wrapper = document.getElementById('canvas-wrapper');
+      if (!wrapper || !camera || !renderer) return;
+      camera.aspect = wrapper.clientWidth / wrapper.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(wrapper.clientWidth, wrapper.clientHeight);
+    }
+
+    // Start the 3D simulation loop once the window finishes loading
+    window.onload = function () {
+      initScene();
+      animate();
+    };
+  </script>
+</body>
+</html>
