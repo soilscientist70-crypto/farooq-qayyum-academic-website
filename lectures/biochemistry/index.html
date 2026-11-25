@@ -152,7 +152,7 @@
       </button>
     </div>
     <button type="button" id="btn-music" onclick="toggleMusic()" aria-pressed="false" title="Play soft sound while the animation runs" class="glass-panel rounded-xl px-3 py-2 text-xs font-bold text-white">Sound: Off</button>
-  <a href="../index.html" style="color:#7dd3fc;padding:.4rem;font-size:.8rem">← Lecture Series</a>  <a id="carbohydrate-explorer-link" href="carbohydrates-3d.html" style="color:#7dd3fc;padding:.4rem;font-size:.8rem">Carbohydrates 3D Explorer</a>
+  <a href="../index.html" style="color:#7dd3fc;padding:.4rem;font-size:.8rem">← Lecture Series</a>  <a id="carbohydrate-explorer-link" href="carbohydrates-3d.html" style="color:#7dd3fc;padding:.4rem;font-size:.8rem" hidden>Open 3D Explorer full page</a>
   </header>
 
   <!-- ==========================================================================
@@ -166,6 +166,8 @@
       <!-- ======================================================================
            UNIFIED 2D INTERACTIVE CANVAS VIEW (Modules 1, 2, 3, 5, 6, 7)
            ====================================================================== -->
+      <iframe id="view-carbohydrates" title="Carbohydrates 3D Explorer and Study Notes"
+        data-src="carbohydrates-3d.html" class="w-full h-full border-0" style="display:none"></iframe>
       <div id="view-2d-stage" class="w-full h-full relative">
         <div id="canvas-2d-wrapper">
           <canvas id="bio-2d-canvas"></canvas>
@@ -1200,7 +1202,14 @@
     function switchCourseModule(moduleKey) {
       stopNarration();
       activeModule = moduleKey;
-      document.getElementById("carbohydrate-explorer-link").hidden = moduleKey !== "carbohydrates";
+      const showCarbohydrates = moduleKey === 'carbohydrates';
+      const explorer = document.getElementById('view-carbohydrates');
+      document.getElementById('carbohydrate-explorer-link').hidden = !showCarbohydrates;
+      document.getElementById('btn-toggle-notes').classList.toggle('!hidden', showCarbohydrates);
+      document.getElementById('btn-music').classList.toggle('!hidden', showCarbohydrates);
+      explorer.style.display = showCarbohydrates ? 'block' : 'none';
+      if (showCarbohydrates && !explorer.hasAttribute('src')) explorer.src = explorer.dataset.src;
+      if (!showCarbohydrates) explorer.removeAttribute('src');
       syncMusic();
       buildTopModuleNav();
       renderLectureNotes(moduleKey);
@@ -1209,7 +1218,11 @@
       const view2D = document.getElementById('view-2d-stage');
       const viewProt = document.getElementById('view-proteins');
 
-      if (mod.is3D) {
+      if (showCarbohydrates) {
+        view2D.classList.add('hidden');
+        viewProt.classList.add('hidden');
+        if (lectureDrawerOpen) toggleLectureDrawer();
+      } else if (mod.is3D) {
         view2D.classList.add('hidden');
         viewProt.classList.remove('hidden');
         requestAnimationFrame(() => onProteinResize());
@@ -3158,6 +3171,7 @@
       if (!last2DTs) last2DTs = timestamp;
       const dt = Math.min((timestamp - last2DTs) / 1000, 0.1);
       last2DTs = timestamp;
+      if (activeModule === 'carbohydrates') return;
 
       const mod = COURSE_MODULES[activeModule];
       if (!mod || mod.is3D) return;
@@ -3305,7 +3319,7 @@ const explanations = {"carbohydrates": ["Read the sugar name in two parts. In al
     }
 
     function syncMusic() {
-      const playing = musicEnabled && !document.hidden && (activeModule === 'proteins' ? protAutoPlay : !sim2DPaused);
+      const playing = musicEnabled && activeModule !== 'carbohydrates' && !document.hidden && (activeModule === 'proteins' ? protAutoPlay : !sim2DPaused);
       const audio = document.getElementById('bg-music');
       if (soundLevel) soundLevel.gain.setTargetAtTime(playing && !uploadedTrack ? (activeNarration ? 0.014 : 0.08) : 0, soundContext.currentTime, 0.025);
       audio.volume = activeNarration ? 0.035 : 0.14;
@@ -3807,6 +3821,11 @@ const explanations = {"carbohydrates": ["Read the sugar name in two parts. In al
     window.addEventListener('resize', () => {
       resize2DCanvas();
       onProteinResize();
+    });
+
+    document.getElementById('view-carbohydrates').addEventListener('load', event => {
+      const backLink = event.currentTarget.contentDocument?.querySelector('a[href="index.html"]');
+      if (backLink) backLink.target = '_top';
     });
 
     window.onload = function () {
