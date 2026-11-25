@@ -152,7 +152,8 @@
       </button>
     </div>
     <button type="button" id="btn-music" onclick="toggleMusic()" aria-pressed="false" title="Play soft sound while the animation runs" class="glass-panel rounded-xl px-3 py-2 text-xs font-bold text-white">Sound: Off</button>
-  <a href="../index.html" style="color:#7dd3fc;padding:.4rem;font-size:.8rem">← Lecture Series</a></header>
+  <a href="../index.html" style="color:#7dd3fc;padding:.4rem;font-size:.8rem">← Lecture Series</a>  <a id="carbohydrate-explorer-link" href="carbohydrates-3d.html" style="color:#7dd3fc;padding:.4rem;font-size:.8rem">Carbohydrates 3D Explorer</a>
+  </header>
 
   <!-- ==========================================================================
        MAIN WORKSPACE: INTERACTIVE ANIMATION STAGE + COLLAPSIBLE LECTURE DRAWER
@@ -1199,6 +1200,7 @@
     function switchCourseModule(moduleKey) {
       stopNarration();
       activeModule = moduleKey;
+      document.getElementById("carbohydrate-explorer-link").hidden = moduleKey !== "carbohydrates";
       syncMusic();
       buildTopModuleNav();
       renderLectureNotes(moduleKey);

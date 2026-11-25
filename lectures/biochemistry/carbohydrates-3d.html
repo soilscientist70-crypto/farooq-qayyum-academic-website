@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carbohydrates: 3D Molecular Explorer & Comprehensive Notes</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js r128 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Google Fonts: Inter & JetBrains Mono -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            overflow-x: hidden;
+        }
+        .mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+        /* Canvas styling */
+        #canvas-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            min-height: 420px;
+            background: radial-gradient(circle at center, #1e293b 0%, #090d16 100%);
+            border-radius: 1rem;
+            overflow: hidden;
+            box-shadow: inset 0 0 40px rgba(0,0,0,0.6);
+            cursor: grab;
+        }
+        #canvas-container:active {
+            cursor: grabbing;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(148, 163, 184, 0.15);
+        }
+        .tab-active {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+            box-shadow: 0 4px 14px 0 rgba(37, 99, 235, 0.39);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- Top Navigation Header -->
+    <header class="glass-panel sticky top-0 z-50 border-b border-slate-700/60 px-4 py-3 sm:px-8">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-emerald-400 flex items-center justify-center shadow-lg shadow-blue-500/20">
+                    <i class="fa-solid fa-atom text-white text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg sm:text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-teal-300 to-emerald-400">
+                        Carbohydrates: 3D Molecular Explorer
+                    </h1>
+                    <p class="text-xs text-slate-400">Biochemistry Study Module &bull; Synthesized from SS-409 &amp; Biochemical Literature</p>
+                </div>
+            </div>
+            
+            <!-- Quick Jump Navigation -->
+            <nav class="flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs sm:text-sm">
+                <a href="#section-overview" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition">Importance</a>
+                <a href="#section-types" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition">Types</a>
+                <a href="#section-structure" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition">Structure</a>
+                <a href="#section-bonds" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition">Bonds</a>
+                <a href="#section-examples" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition">Examples</a>
+            </nav>
+        </div>
+      <a href="index.html" class="inline-block mt-2 text-sm text-sky-300 underline">← Biochemistry course hub</a>
+    </header>
+
+    <!-- Main Interactive Workspace -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-8 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- LEFT/TOP: Interactive 3D Molecular Viewport (Sticky on Desktop) -->
+        <div class="lg:col-span-6 flex flex-col gap-4 lg:sticky lg:top-20 lg:h-[calc(100vh-6.5rem)]">
+            <div class="glass-panel rounded-2xl p-4 flex flex-col flex-grow shadow-2xl">
+                
+                <!-- 3D Model Selector Pills -->
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-blue-400 flex items-center gap-1.5">
+                        <i class="fa-solid fa-cube"></i> 3D Interactive Studio
+                    </span>
+                    <div class="flex items-center gap-2 text-xs">
+                        <button id="btn-toggle-rotate" class="px-2.5 py-1 rounded-lg bg-slate-700/80 hover:bg-slate-600 text-slate-200 transition flex items-center gap-1" title="Toggle Auto-Rotation">
+                            <i class="fa-solid fa-rotate"></i> <span>Auto-Spin: ON</span>
+                        </button>
+                        <button id="btn-reset-cam" class="px-2.5 py-1 rounded-lg bg-slate-700/80 hover:bg-slate-600 text-slate-200 transition" title="Reset Camera">
+                            <i class="fa-solid fa-compress"></i> Reset
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Molecule Selection Buttons -->
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5 mb-3" id="molecule-selector">
+                    <button data-model="glucose_chain" class="mol-btn tab-active px-2.5 py-1.5 rounded-xl text-xs font-semibold transition text-left flex flex-col">
+                        <span>1. D-Glucose (Open)</span>
+                        <span class="text-[10px] opacity-80 font-normal">Aldohexose Chain</span>
+                    </button>
+                    <button data-model="glucose_ring" class="mol-btn bg-slate-800/90 hover:bg-slate-700 text-slate-300 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition text-left flex flex-col">
+                        <span>2. &alpha;-D-Glucopyranose</span>
+                        <span class="text-[10px] opacity-70 font-normal">6-Membered Ring</span>
+                    </button>
+                    <button data-model="fructose_ring" class="mol-btn bg-slate-800/90 hover:bg-slate-700 text-slate-300 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition text-left flex flex-col">
+                        <span>3. &beta;-D-Fructofuranose</span>
+                        <span class="text-[10px] opacity-70 font-normal">5-Membered Ring</span>
+                    </button>
+                    <button data-model="maltose" class="mol-btn bg-slate-800/90 hover:bg-slate-700 text-slate-300 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition text-left flex flex-col">
+                        <span>4. Maltose (&alpha; 1&rarr;4)</span>
+                        <span class="text-[10px] opacity-70 font-normal">Disaccharide (Malt)</span>
+                    </button>
+                    <button data-model="lactose" class="mol-btn bg-slate-800/90 hover:bg-slate-700 text-slate-300 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition text-left flex flex-col">
+                        <span>5. Lactose (&beta; 1&rarr;4)</span>
+                        <span class="text-[10px] opacity-70 font-normal">Disaccharide (Milk)</span>
+                    </button>
+                    <button data-model="sucrose" class="mol-btn bg-slate-800/90 hover:bg-slate-700 text-slate-300 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition text-left flex flex-col">
+                        <span>6. Sucrose (&alpha;1&harr;&beta;2)</span>
+                        <span class="text-[10px] opacity-70 font-normal">Non-Reducing Sugar</span>
+                    </button>
+                    <button data-model="starch" class="mol-btn bg-slate-800/90 hover:bg-slate-700 text-slate-300 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition text-left flex flex-col">
+                        <span>7. Starch (Amylose)</span>
+                        <span class="text-[10px] opacity-70 font-normal">&alpha;(1&rarr;4) Helical Coil</span>
+                    </button>
+                    <button data-model="glycogen" class="mol-btn bg-slate-800/90 hover:bg-slate-700 text-slate-300 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition text-left flex flex-col">
+                        <span>8. Glycogen</span>
+                        <span class="text-[10px] opacity-70 font-normal">&alpha;(1&rarr;6) Branched Tree</span>
+                    </button>
+                    <button data-model="cellulose" class="mol-btn bg-slate-800/90 hover:bg-slate-700 text-slate-300 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition text-left flex flex-col">
+                        <span>9. Cellulose Fibril</span>
+                        <span class="text-[10px] opacity-70 font-normal">&beta;(1&rarr;4) H-Bonded Sheet</span>
+                    </button>
+                </div>
+
+                <!-- 3D WebGL Canvas Wrapper -->
+                <div id="canvas-container" class="flex-grow relative">
+                    <!-- Floating Legend Overlay -->
+                    <div class="absolute top-3 left-3 z-10 glass-panel px-3 py-2 rounded-xl text-[11px] pointer-events-none">
+                        <div class="font-semibold text-slate-200 mb-1">Atom Color Key</div>
+                        <div class="flex items-center gap-3">
+                            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-slate-600 inline-block border border-slate-400"></span> Carbon (C)</span>
+                            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-red-500 inline-block"></span> Oxygen (O)</span>
+                            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-white inline-block"></span> Hydrogen (H)</span>
+                        </div>
+                        <div class="mt-1 flex items-center gap-1 text-amber-400">
+                            <span class="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block animate-pulse"></span> Glycosidic / Anomeric Link
+                        </div>
+                        <div class="mt-0.5 flex items-center gap-1 text-cyan-400">
+                            <span class="w-2.5 h-0.5 bg-cyan-400 inline-block"></span> &alpha;(1&rarr;6) Branch / H-Bond
+                        </div>
+                    </div>
+
+                    <!-- Floating Interaction Hint -->
+                    <div class="absolute bottom-3 right-3 z-10 bg-slate-900/80 px-3 py-1.5 rounded-lg text-[11px] text-slate-400 pointer-events-none border border-slate-700/50">
+                        <i class="fa-solid fa-hand-pointer mr-1"></i> Drag to rotate &bull; Scroll to zoom
+                    </div>
+                </div>
+
+                <!-- Dynamic 3D Molecule Caption Card -->
+                <div id="model-info-box" class="mt-3 p-3.5 rounded-xl bg-slate-800/80 border border-slate-700/70">
+                    <div class="flex items-center justify-between mb-1">
+                        <h3 id="model-title" class="font-bold text-sm text-blue-300">D-Glucose (Open-Chain Aldohexose)</h3>
+                        <span id="model-formula" class="mono text-xs px-2 py-0.5 rounded bg-blue-950 text-blue-300 border border-blue-800">C₆H₁₂O₆</span>
+                    </div>
+                    <p id="model-desc" class="text-xs text-slate-300 leading-relaxed">
+                        A 6-carbon polyhydroxy aldehyde (aldose). Contains 4 chiral centers (C2, C3, C4, C5), giving 2⁴ = 16 stereoisomers. In aqueous solution, &lt;1% exists in this open-chain form.
+                    </p>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- RIGHT: Comprehensive Structured Study Notes -->
+        <div class="lg:col-span-6 space-y-6 pb-12">
+
+            <!-- 1. DEFINITION & BIOLOGICAL IMPORTANCE -->
+            <section id="section-overview" class="glass-panel rounded-2xl p-6 shadow-xl scroll-mt-24">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">1</span>
+                    <h2 class="text-xl font-bold text-white">Definition &amp; Biological Importance</h2>
+                </div>
+                
+                <div class="p-4 rounded-xl bg-slate-800/70 border-l-4 border-emerald-400 mb-4">
+                    <p class="text-sm text-slate-200 leading-relaxed">
+                        <strong>Chemical Definition:</strong> Carbohydrates are <em>polyhydroxy aldehydes or ketones</em>, or substances that yield these compounds upon hydrolysis. Many simpler carbohydrates follow the empirical formula <span class="mono text-emerald-300 font-semibold">(CH₂O)ₙ</span> (where <em>n</em> &ge; 3), historically giving rise to the name "hydrates of carbon."
+                    </p>
+                </div>
+
+                <h3 class="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-3">Key Roles in Living Organisms (Source &amp; Literature)</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div class="p-3.5 rounded-xl bg-slate-800/50 border border-slate-700/50">
+                        <div class="font-bold text-emerald-300 mb-1"><i class="fa-solid fa-bolt mr-1.5"></i>Primary Energy Source</div>
+                        <p class="text-slate-300">Most abundant organic molecules in nature. Synthesized by plants via photosynthesis and oxidized by cells (glycolysis &amp; citric acid cycle) to generate ATP (~4 kcal/g).</p>
+                    </div>
+                    <div class="p-3.5 rounded-xl bg-slate-800/50 border border-slate-700/50">
+                        <div class="font-bold text-blue-300 mb-1"><i class="fa-solid fa-battery-full mr-1.5"></i>Energy Storage Reserves</div>
+                        <p class="text-slate-300">Stored compactly as insoluble polymers: <strong>Starch</strong> (amylose &amp; amylopectin) in plants and <strong>Glycogen</strong> in animal liver and skeletal muscles.</p>
+                    </div>
+                    <div class="p-3.5 rounded-xl bg-slate-800/50 border border-slate-700/50">
+                        <div class="font-bold text-amber-300 mb-1"><i class="fa-solid fa-cubes mr-1.5"></i>Structural Integrity</div>
+                        <p class="text-slate-300">Form load-bearing frameworks: <strong>Cellulose</strong> microfibrils in plant cell walls, <strong>Chitin</strong> in arthropod exoskeletons/fungi, and <strong>Peptidoglycan</strong> in bacteria.</p>
+                    </div>
+                    <div class="p-3.5 rounded-xl bg-slate-800/50 border border-slate-700/50">
+                        <div class="font-bold text-purple-300 mb-1"><i class="fa-solid fa-dna mr-1.5"></i>Genetic &amp; Cellular Signaling</div>
+                        <p class="text-slate-300"><strong>Ribose &amp; Deoxyribose</strong> form the backbone of RNA, DNA, ATP, and coenzymes (NAD⁺, FAD, CoA). Glycoproteins/glycolipids act as cell-surface antigens (e.g., ABO blood groups).</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2. CLASSIFICATION / TYPES OF CARBOHYDRATES -->
+            <section id="section-types" class="glass-panel rounded-2xl p-6 shadow-xl scroll-mt-24">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold">2</span>
+                    <h2 class="text-xl font-bold text-white">Types &amp; Classification</h2>
+                </div>
+
+                <p class="text-sm text-slate-300 mb-4">
+                    Carbohydrates are classified into three major groups based on the number of sugar units produced upon acid or enzymatic hydrolysis:
+                </p>
+
+                <!-- A. Monosaccharides -->
+                <div class="mb-5">
+                    <h3 class="text-base font-bold text-blue-300 mb-2">A. Monosaccharides ("Simple Sugars")</h3>
+                    <p class="text-xs text-slate-300 mb-3">
+                        Single polyhydroxy aldehyde or ketone units that cannot be hydrolyzed into simpler carbohydrates. Classified by <strong>carbonyl functional group</strong> (<em>Aldose</em> if terminal aldehyde <span class="mono">-CHO</span>; <em>Ketose</em> if internal ketone <span class="mono">C=O</span>) and <strong>carbon count</strong>:
+                    </p>
+                    <div class="overflow-x-auto rounded-xl border border-slate-700">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-slate-800 text-slate-200 uppercase">
+                                <tr>
+                                    <th class="px-3 py-2">Carbons</th>
+                                    <th class="px-3 py-2">Category</th>
+                                    <th class="px-3 py-2">Aldose Example</th>
+                                    <th class="px-3 py-2">Ketose Example</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-700/60 bg-slate-900/40 text-slate-300">
+                                <tr>
+                                    <td class="px-3 py-2 mono font-semibold text-blue-400">3</td>
+                                    <td class="px-3 py-2 font-medium">Trioses</td>
+                                    <td class="px-3 py-2">Glyceraldehyde</td>
+                                    <td class="px-3 py-2">Dihydroxyacetone</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-3 py-2 mono font-semibold text-blue-400">4</td>
+                                    <td class="px-3 py-2 font-medium">Tetroses</td>
+                                    <td class="px-3 py-2">Erythrose, Threose</td>
+                                    <td class="px-3 py-2">Erythrulose</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-3 py-2 mono font-semibold text-blue-400">5</td>
+                                    <td class="px-3 py-2 font-medium">Pentoses</td>
+                                    <td class="px-3 py-2">Ribose, Xylose</td>
+                                    <td class="px-3 py-2">Ribulose, Xylulose</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-3 py-2 mono font-semibold text-blue-400">6</td>
+                                    <td class="px-3 py-2 font-medium">Hexoses</td>
+                                    <td class="px-3 py-2">Glucose, Galactose, Mannose</td>
+                                    <td class="px-3 py-2">Fructose</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-3 py-2 mono font-semibold text-blue-400">7 / 9</td>
+                                    <td class="px-3 py-2 font-medium">Heptoses / Nonoses</td>
+                                    <td class="px-3 py-2">Glucoheptose</td>
+                                    <td class="px-3 py-2">Sedoheptulose / Neuraminic acid</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- B. Oligosaccharides -->
+                <div class="mb-5 p-4 rounded-xl bg-slate-800/50 border border-slate-700/60">
+                    <h3 class="text-base font-bold text-teal-300 mb-1">B. Oligosaccharides (2–10 Monosaccharide Units)</h3>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        Short chains of monosaccharides joined by glycosidic bonds (defined as 2–6 units in introductory texts, up to 10 in IUPAC nomenclature). <strong>Disaccharides</strong> (2 units) are the most abundant—e.g., <em>Sucrose, Lactose, Maltose, Isomaltose</em>. Trisaccharides (e.g., Raffinose) and tetrasaccharides (e.g., Stachyose) occur in legumes.
+                    </p>
+                </div>
+
+                <!-- C. Polysaccharides -->
+                <div class="p-4 rounded-xl bg-slate-800/50 border border-slate-700/60">
+                    <h3 class="text-base font-bold text-purple-300 mb-2">C. Polysaccharides (Glycans: &gt;10 to Thousands of Units)</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                        <div>
+                            <span class="font-bold text-white block mb-1">1. Homopolysaccharides</span>
+                            <p class="text-slate-300">Composed of a <strong>single type</strong> of monomer unit. Examples: <em>Starch, Glycogen, Cellulose, Chitin, Inulin</em>.</p>
+                        </div>
+                        <div>
+                            <span class="font-bold text-white block mb-1">2. Heteropolysaccharides</span>
+                            <p class="text-slate-300">Composed of <strong>two or more different</strong> monomer types. Examples: <em>Glycosaminoglycans (Hyaluronic acid, Heparin), Peptidoglycan, Agar</em>.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 3. STRUCTURE, STEREOISOMERISM & CYCLIZATION -->
+            <section id="section-structure" class="glass-panel rounded-2xl p-6 shadow-xl scroll-mt-24">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold">3</span>
+                    <h2 class="text-xl font-bold text-white">Chemical Structure &amp; Stereoisomerism</h2>
+                </div>
+
+                <div class="space-y-4 text-xs text-slate-300">
+                    <!-- Chirality & D/L -->
+                    <div class="p-4 rounded-xl bg-slate-800/60 border border-slate-700/60">
+                        <h3 class="text-sm font-bold text-amber-300 mb-1.5">Asymmetric Carbons &amp; D/L Configuration</h3>
+                        <p class="leading-relaxed mb-2">
+                            A carbon atom bonded to 4 different groups is <strong>asymmetric (chiral)</strong>. A molecule with <em>n</em> chiral centers has <span class="mono text-amber-300 font-bold">2ⁿ</span> stereoisomers (e.g., aldohexoses have 4 chiral centers &rarr; 16 optical isomers).
+                        </p>
+                        <ul class="list-disc pl-4 space-y-1 text-slate-300">
+                            <li><strong>Enantiomers:</strong> Non-superimposable mirror images (e.g., D-Glyceraldehyde vs. L-Glyceraldehyde).</li>
+                            <li><strong>D vs. L Assignment:</strong> Determined by the chiral carbon <em>farthest</em> from the carbonyl group (C5 in glucose). If <span class="mono">-OH</span> is on the <strong>right</strong> in a Fischer projection, it is a <strong>D-sugar</strong> (predominant in nature); if on the left, it is an <strong>L-sugar</strong>.</li>
+                            <li><strong>Epimers:</strong> Diastereomers differing in configuration at only <em>one</em> chiral carbon (e.g., D-Glucose and D-Galactose are C4 epimers; D-Glucose and D-Mannose are C2 epimers).</li>
+                        </ul>
+                    </div>
+
+                    <!-- Ring Formation & Anomers -->
+                    <div class="p-4 rounded-xl bg-slate-800/60 border border-slate-700/60">
+                        <h3 class="text-sm font-bold text-blue-300 mb-1.5">Cyclization: Pyranoses, Furanoses &amp; Mutarotation</h3>
+                        <p class="leading-relaxed mb-2">
+                            In aqueous solution, monosaccharides with 5 or more carbons react intramolecularly: an alcohol <span class="mono">-OH</span> attacks the carbonyl carbon to form a cyclic <strong>hemiacetal</strong> (from aldose) or <strong>hemiketal</strong> (from ketose):
+                        </p>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 my-2">
+                            <div class="p-2.5 rounded-lg bg-slate-900/70 border border-slate-700">
+                                <span class="font-bold text-emerald-400">Pyranose (6-Membered Ring)</span>
+                                <p class="mt-0.5 text-[11px]">5 carbons + 1 oxygen (e.g., C5-OH attacks C1 aldehyde in D-Glucose &rarr; <em>Glucopyranose</em>).</p>
+                            </div>
+                            <div class="p-2.5 rounded-lg bg-slate-900/70 border border-slate-700">
+                                <span class="font-bold text-pink-400">Furanose (5-Membered Ring)</span>
+                                <p class="mt-0.5 text-[11px]">4 carbons + 1 oxygen (e.g., C5-OH attacks C2 ketone in D-Fructose &rarr; <em>Fructofuranose</em>).</p>
+                            </div>
+                        </div>
+                        <p class="leading-relaxed mt-2">
+                            <strong>Anomers (&alpha; vs. &beta;) &amp; Mutarotation:</strong> Cyclization turns the carbonyl carbon into a new chiral center called the <strong>anomeric carbon</strong>. In Haworth projections of D-sugars, the <strong>&alpha;-anomer</strong> has the anomeric <span class="mono">-OH</span> pointing <em>down</em> (trans to C6), while the <strong>&beta;-anomer</strong> has it pointing <em>up</em> (cis to C6). Spontaneous interconversion between forms in water is called <strong>mutarotation</strong> (D-glucose equilibrates at ~36% &alpha;, ~63% &beta;, and &lt;1% open-chain).
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 4. BONDS IN CARBOHYDRATES -->
+            <section id="section-bonds" class="glass-panel rounded-2xl p-6 shadow-xl scroll-mt-24">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="w-8 h-8 rounded-lg bg-rose-500/20 text-rose-400 flex items-center justify-center font-bold">4</span>
+                    <h2 class="text-xl font-bold text-white">Chemical Bonds in Carbohydrates</h2>
+                </div>
+
+                <div class="space-y-3 text-xs text-slate-300">
+                    <!-- O-Glycosidic Bond -->
+                    <div class="p-4 rounded-xl bg-slate-800/60 border border-rose-500/30">
+                        <div class="flex items-center justify-between mb-1">
+                            <h3 class="text-sm font-bold text-rose-300">1. O-Glycosidic Bond (C–O–C Linkage)</h3>
+                            <span class="px-2 py-0.5 rounded bg-rose-950 text-rose-300 mono text-[10px]">Condensation (-H₂O)</span>
+                        </div>
+                        <p class="leading-relaxed mb-2">
+                            A covalent acetal/ketal bond formed between the <strong>anomeric carbon</strong> of one sugar (hemiacetal) and a <strong>hydroxyl oxygen (<span class="mono">-OH</span>)</strong> of another molecule with the elimination of water (<span class="mono">H₂O</span>). Cleaved via <em>hydrolysis</em>.
+                        </p>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px]">
+                            <div class="p-2 rounded bg-slate-900/70">
+                                <strong class="text-amber-300">&alpha;(1&rarr;4) Bond:</strong> Linear chains in maltose, amylose, and glycogen. Digestible by human &alpha;-amylase.
+                            </div>
+                            <div class="p-2 rounded bg-slate-900/70">
+                                <strong class="text-amber-300">&alpha;(1&rarr;6) Bond:</strong> Creates branch points in amylopectin (every 24–30 units) and glycogen (every 8–12 units).
+                            </div>
+                            <div class="p-2 rounded bg-slate-900/70">
+                                <strong class="text-amber-300">&beta;(1&rarr;4) Bond:</strong> Found in lactose and cellulose. Requires <em>lactase</em> or microbial <em>cellulase</em> to hydrolyze.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- N-Glycosidic Bond -->
+                    <div class="p-4 rounded-xl bg-slate-800/60 border border-slate-700/60">
+                        <h3 class="text-sm font-bold text-indigo-300 mb-1">2. N-Glycosidic Bond (C–N Linkage)</h3>
+                        <p class="leading-relaxed">
+                            Formed between the anomeric carbon of a carbohydrate (like D-ribose or 2-deoxy-D-ribose) and the <strong>nitrogen atom of an amine</strong>. Essential for linking nitrogenous bases (purines/pyrimidines) to pentose sugars in <strong>nucleotides (DNA, RNA, ATP)</strong> and in <em>N-linked glycoproteins</em>.
+                        </p>
+                    </div>
+
+                    <!-- Hydrogen & Phosphoester Bonds -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div class="p-3.5 rounded-xl bg-slate-800/50 border border-slate-700/60">
+                            <h3 class="text-sm font-bold text-cyan-300 mb-1">3. Hydrogen Bonds</h3>
+                            <p class="leading-relaxed">
+                                Extensive inter-chain H-bonding between parallel &beta;(1&rarr;4) glucan chains bundles cellulose into rigid, water-insoluble <strong>microfibrils</strong>. Also stabilizes helical coils in amylose.
+                            </p>
+                        </div>
+                        <div class="p-3.5 rounded-xl bg-slate-800/50 border border-slate-700/60">
+                            <h3 class="text-sm font-bold text-emerald-300 mb-1">4. Phosphoester Bonds</h3>
+                            <p class="leading-relaxed">
+                                Formed when a hydroxyl group (e.g., C6 of glucose) reacts with phosphoric acid (e.g., <em>Glucose-6-phosphate</em>), trapping sugars inside cells during glycolysis.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 5. IMPORTANT EXAMPLES & REDUCING PROPERTIES -->
+            <section id="section-examples" class="glass-panel rounded-2xl p-6 shadow-xl scroll-mt-24">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="w-8 h-8 rounded-lg bg-teal-500/20 text-teal-400 flex items-center justify-center font-bold">5</span>
+                    <h2 class="text-xl font-bold text-white">Key Biological Examples</h2>
+                </div>
+
+                <!-- Disaccharides Comparison -->
+                <h3 class="text-sm font-bold text-teal-300 mb-2">Major Disaccharides (Reducing vs. Non-Reducing)</h3>
+                <div class="overflow-x-auto rounded-xl border border-slate-700 mb-5">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-800 text-slate-200">
+                            <tr>
+                                <th class="px-3 py-2">Disaccharide</th>
+                                <th class="px-3 py-2">Subunits &amp; Linkage</th>
+                                <th class="px-3 py-2">Source</th>
+                                <th class="px-3 py-2">Reducing?</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-700/60 bg-slate-900/40 text-slate-300">
+                            <tr>
+                                <td class="px-3 py-2 font-bold text-white">Maltose</td>
+                                <td class="px-3 py-2">&alpha;-D-Glc-(1&rarr;4)-D-Glc</td>
+                                <td class="px-3 py-2">Malt, starch digestion</td>
+                                <td class="px-3 py-2 text-emerald-400 font-semibold">Yes (free C1)</td>
+                            </tr>
+                            <tr>
+                                <td class="px-3 py-2 font-bold text-white">Lactose</td>
+                                <td class="px-3 py-2">&beta;-D-Gal-(1&rarr;4)-D-Glc</td>
+                                <td class="px-3 py-2">Mammalian milk</td>
+                                <td class="px-3 py-2 text-emerald-400 font-semibold">Yes (free C1)</td>
+                            </tr>
+                            <tr>
+                                <td class="px-3 py-2 font-bold text-white">Isomaltose</td>
+                                <td class="px-3 py-2">&alpha;-D-Glc-(1&rarr;6)-D-Glc</td>
+                                <td class="px-3 py-2">Amylopectin branch hydrolysis</td>
+                                <td class="px-3 py-2 text-emerald-400 font-semibold">Yes (free C1)</td>
+                            </tr>
+                            <tr>
+                                <td class="px-3 py-2 font-bold text-white">Sucrose</td>
+                                <td class="px-3 py-2">&alpha;-D-Glc-(1&harr;2)-&beta;-D-Fru</td>
+                                <td class="px-3 py-2">Sugarcane, sugar beet</td>
+                                <td class="px-3 py-2 text-rose-400 font-semibold">No (both C1 &amp; C2 locked)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Polysaccharides Cards -->
+                <h3 class="text-sm font-bold text-teal-300 mb-2">Major Polysaccharides</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div class="p-3.5 rounded-xl bg-slate-800/60 border border-slate-700/60">
+                        <div class="font-bold text-amber-300 mb-1">Starch (Amylose + Amylopectin)</div>
+                        <p class="text-slate-300">Plant energy storage. <strong>Amylose</strong> is unbranched &alpha;(1&rarr;4) D-glucose forming a left-handed helix (~6 residues/turn). <strong>Amylopectin</strong> is branched via &alpha;(1&rarr;6) links.</p>
+                    </div>
+                    <div class="p-3.5 rounded-xl bg-slate-800/60 border border-slate-700/60">
+                        <div class="font-bold text-rose-300 mb-1">Glycogen ("Animal Starch")</div>
+                        <p class="text-slate-300">Animal glucose reserve. Structurally similar to amylopectin (&alpha;1&rarr;4 chains) but much more compact and heavily branched (&alpha;1&rarr;6 every 8–12 residues) for rapid mobilization.</p>
+                    </div>
+                    <div class="p-3.5 rounded-xl bg-slate-800/60 border border-slate-700/60">
+                        <div class="font-bold text-emerald-300 mb-1">Cellulose</div>
+                        <p class="text-slate-300">Most abundant organic polymer on Earth. Linear &beta;(1&rarr;4) D-glucose chains where every alternate glucose is flipped 180&deg;, creating straight fibers for plant cell walls.</p>
+                    </div>
+                    <div class="p-3.5 rounded-xl bg-slate-800/60 border border-slate-700/60">
+                        <div class="font-bold text-purple-300 mb-1">Chitin &amp; Glycosaminoglycans</div>
+                        <p class="text-slate-300"><strong>Chitin:</strong> Homopolymer of &beta;(1&rarr;4) <em>N-acetylglucosamine</em> in arthropods/fungi. <strong>GAGs:</strong> Negatively charged heteropolysaccharides (e.g., Hyaluronic acid) in extracellular matrix.</p>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-800 py-4 px-4 text-center text-xs text-slate-500">
+        Interactive Biochemistry Module &bull; Synthesized from Dr. M. Farooq Qayyum (SS-409, BZU Multan) &amp; Standard Lehninger Principles of Biochemistry
+    </footer>
+
+    <!-- Three.js 3D Molecular Engine -->
+    <script>
+        // Metadata dictionary for each 3D model
+        const MODEL_DATA = {
+            glucose_chain: {
+                title: "D-Glucose (Open-Chain Aldohexose)",
+                formula: "C₆H₁₂O₆",
+                desc: "A 6-carbon polyhydroxy aldehyde (aldose). The terminal C1 aldehyde group (C=O) is highlighted. Four chiral centers (C2–C5) yield 16 optical isomers; C5-OH on the right defines the D-isomer."
+            },
+            glucose_ring: {
+                title: "α-D-Glucopyranose (6-Membered Ring)",
+                formula: "C₆H₁₂O₆",
+                desc: "Formed by intramolecular nucleophilic attack of the C5 hydroxyl onto the C1 aldehyde, creating a cyclic hemiacetal. In the α-anomer, the C1 anomeric -OH (gold) points below the ring plane."
+            },
+            fructose_ring: {
+                title: "β-D-Fructofuranose (5-Membered Ring)",
+                formula: "C₆H₁₂O₆",
+                desc: "A ketohexose forming a 5-membered furanose hemiketal ring (4 carbons + 1 ring oxygen) via reaction between C5-OH and the C2 ketone group. Sweetest naturally occurring sugar."
+            },
+            maltose: {
+                title: "Maltose: α-D-Glucopyranosyl-(1→4)-D-glucopyranose",
+                formula: "C₁₂H₂₂O₁₁",
+                desc: "Malt sugar composed of two D-glucose rings joined by an α(1→4) O-glycosidic bond (gold). Because the right-hand glucose retains a free anomeric C1 hydroxyl, maltose is a reducing sugar."
+            },
+            lactose: {
+                title: "Lactose: β-D-Galactopyranosyl-(1→4)-D-glucopyranose",
+                formula: "C₁₂H₂₂O₁₁",
+                desc: "Milk sugar formed between C1 of β-D-galactose (note its axial C4-OH pointing up) and C4 of D-glucose via an upward-angled β(1→4) glycosidic linkage. It is a reducing sugar."
+            },
+            sucrose: {
+                title: "Sucrose: α-D-Glucopyranosyl-(1↔2)-β-D-fructofuranoside",
+                formula: "C₁₂H₂₂O₁₁",
+                desc: "Table sugar formed by linking the anomeric C1 of α-D-glucose to the anomeric C2 of β-D-fructose. Since both anomeric carbons are locked in the glycosidic bond, sucrose is a non-reducing sugar."
+            },
+            starch: {
+                title: "Starch (Amylose Helical Polymer)",
+                formula: "(C₆H₁₀O₅)ₙ",
+                desc: "Plant energy storage polysaccharide. Amylose is a linear polymer of D-glucose units linked via α(1→4) glycosidic bonds, naturally coiling into a left-handed helix (~6 glucose residues per turn)."
+            },
+            glycogen: {
+                title: "Glycogen (Highly Branched Animal Polysaccharide)",
+                formula: "(C₆H₁₀O₅)ₙ",
+                desc: "Animal glucose reserve. Consists of α(1→4) linked glucose chains (gold links) with frequent α(1→6) branch points (cyan links, every 8–12 residues in vivo), creating multiple non-reducing ends for rapid enzymatic breakdown."
+            },
+            cellulose: {
+                title: "Cellulose Microfibril Sheet (Structural Polysaccharide)",
+                formula: "(C₆H₁₀O₅)ₙ",
+                desc: "Plant cell wall polymer of linear β(1→4) D-glucose chains. Every alternate glucose residue is flipped 180°, producing straight ribbons stabilized by inter-chain hydrogen bonds (cyan struts)."
+            }
+        };
+
+        let scene, camera, renderer, moleculeGroup;
+        let autoRotate = true;
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+        let currentModelKey = 'glucose_chain';
+
+        // Shared Materials for realistic 3D ball-and-stick rendering
+        const materials = {
+            C: new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.35, metalness: 0.2 }),
+            O: new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.3, metalness: 0.15 }),
+            H: new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.4, metalness: 0.1 }),
+            Highlight: new THREE.MeshStandardMaterial({ 
+                color: 0xf59e0b, 
+                emissive: 0xb45309, 
+                emissiveIntensity: 0.45,
+                roughness: 0.25 
+            }),
+            BranchLink: new THREE.MeshStandardMaterial({ 
+                color: 0x06b6d4, 
+                emissive: 0x0e7490, 
+                emissiveIntensity: 0.5,
+                roughness: 0.25 
+            }),
+            RingO: new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.3 }),
+            Bond: new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.4, metalness: 0.3 }),
+            DoubleBond: new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.3 }),
+            GlycosidicBond: new THREE.MeshStandardMaterial({ 
+                color: 0xfbbf24, 
+                emissive: 0xd97706, 
+                emissiveIntensity: 0.5 
+            })
+        };
+
+        // Atom radii
+        const radii = { C: 0.42, O: 0.38, H: 0.24, Highlight: 0.44, BranchLink: 0.42, RingO: 0.40 };
+
+        function initThree() {
+            const container = document.getElementById('canvas-container');
+            scene = new THREE.Scene();
+
+            // Camera setup
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+            camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
+            camera.position.set(0, 1.5, 11);
+
+            // Renderer setup
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(width, height);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.appendChild(renderer.domElement);
+
+            // Studio Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
+            scene.add(ambientLight);
+
+            const dirLight1 = new THREE.DirectionalLight(0xffffff, 0.9);
+            dirLight1.position.set(10, 15, 10);
+            scene.add(dirLight1);
+
+            const dirLight2 = new THREE.DirectionalLight(0x60a5fa, 0.45);
+            dirLight2.position.set(-10, -8, -10);
+            scene.add(dirLight2);
+
+            moleculeGroup = new THREE.Group();
+            scene.add(moleculeGroup);
+
+            // Build initial molecule
+            buildMolecule(currentModelKey);
+
+            // Setup Mouse & Touch Controls
+            setupControls(container);
+
+            // Handle Window Resize
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function onWindowResize() {
+            const container = document.getElementById('canvas-container');
+            if (!container) return;
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+        }
+
+        // Helper: Create Sphere Atom
+        function addAtom(parent, type, pos) {
+            const geo = new THREE.SphereGeometry(radii[type] || 0.35, 24, 24);
+            const mesh = new THREE.Mesh(geo, materials[type]);
+            mesh.position.set(pos[0], pos[1], pos[2]);
+            parent.add(mesh);
+            return mesh.position;
+        }
+
+        // Helper: Create Cylinder Bond between two 3D vectors
+        function addBond(parent, p1, p2, matType = 'Bond', radius = 0.11, isDouble = false) {
+            const v1 = new THREE.Vector3(...p1);
+            const v2 = new THREE.Vector3(...p2);
+            const dist = v1.distanceTo(v2);
+            const mid = v1.clone().add(v2).multiplyScalar(0.5);
+
+            const createCyl = (offsetVec) => {
+                const geo = new THREE.CylinderGeometry(radius, radius, dist, 14);
+                const mesh = new THREE.Mesh(geo, materials[matType]);
+                mesh.position.copy(mid).add(offsetVec);
+                mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), v2.clone().sub(v1).normalize());
+                parent.add(mesh);
+            };
+
+            if (isDouble) {
+                createCyl(new THREE.Vector3(0, 0, 0.12));
+                createCyl(new THREE.Vector3(0, 0, -0.12));
+            } else {
+                createCyl(new THREE.Vector3(0, 0, 0));
+            }
+        }
+
+        // Helper: Generate a Pyranose (6-membered) ring unit centered at offset
+        function createPyranoseUnit(parent, offset = [0, 0, 0], options = {}) {
+            const [ox, oy, oz] = offset;
+            const isAlpha = options.alpha !== undefined ? options.alpha : true;
+            const isGalactose = options.galactose || false;
+            const highlightC1 = options.highlightC1 || false;
+            const omitC1OH = options.omitC1OH || false;
+            const omitC4OH = options.omitC4OH || false;
+
+            // Chair-like puckered Haworth coordinates
+            const coords = {
+                C1: [ox + 1.5, oy - 0.1, oz + 0.2],
+                C2: [ox + 0.75, oy - 0.25, oz + 1.25],
+                C3: [ox - 0.75, oy - 0.1, oz + 1.25],
+                C4: [ox - 1.5, oy - 0.25, oz + 0.2],
+                C5: [ox - 0.75, oy + 0.1, oz - 1.05],
+                O5: [ox + 0.75, oy + 0.15, oz - 1.05],
+                C6: [ox - 1.4, oy + 1.35, oz - 1.3]
+            };
+
+            // Ring atoms
+            addAtom(parent, highlightC1 ? 'Highlight' : 'C', coords.C1);
+            addAtom(parent, 'C', coords.C2);
+            addAtom(parent, 'C', coords.C3);
+            addAtom(parent, 'C', coords.C4);
+            addAtom(parent, 'C', coords.C5);
+            addAtom(parent, 'RingO', coords.O5);
+            addAtom(parent, 'C', coords.C6);
+
+            // Ring bonds
+            addBond(parent, coords.C1, coords.C2);
+            addBond(parent, coords.C2, coords.C3);
+            addBond(parent, coords.C3, coords.C4);
+            addBond(parent, coords.C4, coords.C5);
+            addBond(parent, coords.C5, coords.O5);
+            addBond(parent, coords.O5, coords.C1);
+            addBond(parent, coords.C5, coords.C6);
+
+            // C6 Hydroxymethyl (-CH2OH)
+            const o6 = [coords.C6[0] - 0.8, coords.C6[1] + 0.6, coords.C6[2]];
+            addAtom(parent, 'O', o6);
+            addBond(parent, coords.C6, o6);
+            addAtom(parent, 'H', [o6[0] - 0.5, o6[1] + 0.3, o6[2]]);
+            addBond(parent, o6, [o6[0] - 0.5, o6[1] + 0.3, o6[2]], 'Bond', 0.08);
+
+            // C1 Anomeric Substituents
+            if (!omitC1OH) {
+                const c1OH = isAlpha ? [coords.C1[0] + 0.4, coords.C1[1] - 1.1, coords.C1[2] + 0.2] : [coords.C1[0] + 0.4, coords.C1[1] + 1.0, coords.C1[2] + 0.2];
+                const c1H  = isAlpha ? [coords.C1[0] + 0.3, coords.C1[1] + 0.85, coords.C1[2] + 0.1] : [coords.C1[0] + 0.3, coords.C1[1] - 0.85, coords.C1[2] + 0.1];
+                addAtom(parent, highlightC1 ? 'Highlight' : 'O', c1OH);
+                addBond(parent, coords.C1, c1OH);
+                addAtom(parent, 'H', c1H);
+                addBond(parent, coords.C1, c1H, 'Bond', 0.08);
+            }
+
+            // C2 (-OH down)
+            const o2 = [coords.C2[0] + 0.2, coords.C2[1] - 1.05, coords.C2[2] + 0.5];
+            addAtom(parent, 'O', o2);
+            addBond(parent, coords.C2, o2);
+
+            // C3 (-OH up)
+            const o3 = [coords.C3[0] - 0.2, coords.C3[1] + 1.05, coords.C3[2] + 0.5];
+            addAtom(parent, 'O', o3);
+            addBond(parent, coords.C3, o3);
+
+            // C4 (-OH down in glucose, up in galactose)
+            if (!omitC4OH) {
+                const o4 = isGalactose ? [coords.C4[0] - 0.4, coords.C4[1] + 1.05, coords.C4[2] + 0.2] : [coords.C4[0] - 0.4, coords.C4[1] - 1.05, coords.C4[2] + 0.2];
+                addAtom(parent, 'O', o4);
+                addBond(parent, coords.C4, o4);
+            }
+
+            return coords;
+        }
+
+        // Helper: Generate Furanose (5-membered) ring unit
+        function createFuranoseUnit(parent, offset = [0, 0, 0], options = {}) {
+            const [ox, oy, oz] = offset;
+            const omitC2OH = options.omitC2OH || false;
+
+            const coords = {
+                O_ring: [ox, oy + 0.2, oz - 1.1],
+                C2: [ox + 1.25, oy - 0.1, oz - 0.2],
+                C3: [ox + 0.75, oy - 0.25, oz + 1.1],
+                C4: [ox - 0.75, oy - 0.25, oz + 1.1],
+                C5: [ox - 1.25, oy - 0.1, oz - 0.2]
+            };
+
+            addAtom(parent, 'RingO', coords.O_ring);
+            addAtom(parent, options.highlightC2 ? 'Highlight' : 'C', coords.C2);
+            addAtom(parent, 'C', coords.C3);
+            addAtom(parent, 'C', coords.C4);
+            addAtom(parent, 'C', coords.C5);
+
+            addBond(parent, coords.O_ring, coords.C2);
+            addBond(parent, coords.C2, coords.C3);
+            addBond(parent, coords.C3, coords.C4);
+            addBond(parent, coords.C4, coords.C5);
+            addBond(parent, coords.C5, coords.O_ring);
+
+            // C1 (-CH2OH attached to C2)
+            const c1 = [coords.C2[0] + 0.6, coords.C2[1] - 0.9, coords.C2[2] - 0.3];
+            addAtom(parent, 'C', c1);
+            addBond(parent, coords.C2, c1);
+            const o1 = [c1[0] + 0.6, c1[1] - 0.6, c1[2]];
+            addAtom(parent, 'O', o1);
+            addBond(parent, c1, o1);
+
+            // C2 anomeric -OH (up for beta)
+            if (!omitC2OH) {
+                const o2 = [coords.C2[0] + 0.5, coords.C2[1] + 1.0, coords.C2[2] - 0.1];
+                addAtom(parent, 'Highlight', o2);
+                addBond(parent, coords.C2, o2);
+            }
+
+            // C3 (-OH up) & C4 (-OH down)
+            addAtom(parent, 'O', [coords.C3[0] + 0.2, coords.C3[1] + 1.0, coords.C3[2] + 0.4]);
+            addBond(parent, coords.C3, [coords.C3[0] + 0.2, coords.C3[1] + 1.0, coords.C3[2] + 0.4]);
+            addAtom(parent, 'O', [coords.C4[0] - 0.2, coords.C4[1] - 1.0, coords.C4[2] + 0.4]);
+            addBond(parent, coords.C4, [coords.C4[0] - 0.2, coords.C4[1] - 1.0, coords.C4[2] + 0.4]);
+
+            // C6 (-CH2OH attached to C5)
+            const c6 = [coords.C5[0] - 0.6, coords.C5[1] + 1.1, coords.C5[2] - 0.2];
+            addAtom(parent, 'C', c6);
+            addBond(parent, coords.C5, c6);
+            const o6 = [c6[0] - 0.6, c6[1] + 0.6, c6[2]];
+            addAtom(parent, 'O', o6);
+            addBond(parent, c6, o6);
+
+            return coords;
+        }
+
+        // Master Molecule Builder
+        function buildMolecule(key) {
+            // Clear existing children
+            while (moleculeGroup.children.length > 0) {
+                moleculeGroup.remove(moleculeGroup.children[0]);
+            }
+
+            moleculeGroup.rotation.set(0.25, -0.3, 0);
+
+            if (key === 'glucose_chain') {
+                // 6-carbon zig-zag open chain D-Glucose
+                const carbons = [
+                    [0, 3.0, 0],     // C1 (Aldehyde)
+                    [0.45, 1.8, 0.2],// C2
+                    [-0.45, 0.6, -0.2],// C3
+                    [0.45, -0.6, 0.2],// C4
+                    [-0.45, -1.8, -0.2],// C5
+                    [0.45, -3.0, 0.2] // C6
+                ];
+
+                carbons.forEach((c, idx) => {
+                    addAtom(moleculeGroup, idx === 0 ? 'Highlight' : 'C', c);
+                    if (idx > 0) addBond(moleculeGroup, carbons[idx - 1], c);
+                });
+
+                // C1 Aldehyde (=O and -H)
+                const o1 = [-0.9, 3.6, 0.3];
+                const h1 = [0.9, 3.5, -0.2];
+                addAtom(moleculeGroup, 'O', o1);
+                addBond(moleculeGroup, carbons[0], o1, 'DoubleBond', 0.1, true);
+                addAtom(moleculeGroup, 'H', h1);
+                addBond(moleculeGroup, carbons[0], h1, 'Bond', 0.08);
+
+                // Fischer-inspired stereochemistry along C2..C5: R, L, R, R
+                const ohDirs = [1, -1, 1, 1];
+                for (let i = 1; i <= 4; i++) {
+                    const c = carbons[i];
+                    const dir = ohDirs[i - 1];
+                    const oPos = [c[0] + dir * 1.15, c[1], c[2] + 0.5];
+                    const hPos = [c[0] - dir * 0.95, c[1], c[2] - 0.5];
+                    const ohHPos = [oPos[0] + dir * 0.5, oPos[1] + 0.3, oPos[2] + 0.2];
+
+                    addAtom(moleculeGroup, 'O', oPos);
+                    addBond(moleculeGroup, c, oPos);
+                    addAtom(moleculeGroup, 'H', ohHPos);
+                    addBond(moleculeGroup, oPos, ohHPos, 'Bond', 0.08);
+
+                    addAtom(moleculeGroup, 'H', hPos);
+                    addBond(moleculeGroup, c, hPos, 'Bond', 0.08);
+                }
+
+                // C6 (-CH2OH)
+                const c6 = carbons[5];
+                const o6 = [c6[0] + 1.1, c6[1] - 0.4, c6[2] + 0.4];
+                addAtom(moleculeGroup, 'O', o6);
+                addBond(moleculeGroup, c6, o6);
+                addAtom(moleculeGroup, 'H', [c6[0] - 0.7, c6[1] - 0.6, c6[2]]);
+                addBond(moleculeGroup, c6, [c6[0] - 0.7, c6[1] - 0.6, c6[2]], 'Bond', 0.08);
+                addAtom(moleculeGroup, 'H', [c6[0], c6[1] - 0.7, c6[2] - 0.7]);
+                addBond(moleculeGroup, c6, [c6[0], c6[1] - 0.7, c6[2] - 0.7], 'Bond', 0.08);
+
+            } else if (key === 'glucose_ring') {
+                createPyranoseUnit(moleculeGroup, [0, 0, 0], { alpha: true, highlightC1: true });
+
+            } else if (key === 'fructose_ring') {
+                createFuranoseUnit(moleculeGroup, [0, 0, 0], { highlightC2: true });
+
+            } else if (key === 'maltose') {
+                // Left α-D-glucose + Right D-glucose linked via α(1->4)
+                const left = createPyranoseUnit(moleculeGroup, [-2.3, 0, 0], { alpha: true, omitC1OH: true, highlightC1: true });
+                const right = createPyranoseUnit(moleculeGroup, [2.3, 0, 0], { alpha: false, omitC4OH: true });
+
+                // Bridging Glycosidic Oxygen (downward α-angle)
+                const bridgeO = [0, -0.85, 0.3];
+                addAtom(moleculeGroup, 'Highlight', bridgeO);
+                addBond(moleculeGroup, left.C1, bridgeO, 'GlycosidicBond', 0.14);
+                addBond(moleculeGroup, bridgeO, right.C4, 'GlycosidicBond', 0.14);
+
+            } else if (key === 'lactose') {
+                // Left β-D-galactose (axial C4-OH up) + Right D-glucose linked via β(1->4)
+                const left = createPyranoseUnit(moleculeGroup, [-2.3, -0.2, 0], { alpha: false, galactose: true, omitC1OH: true, highlightC1: true });
+                const right = createPyranoseUnit(moleculeGroup, [2.3, 0.2, 0], { alpha: false, omitC4OH: true });
+
+                // Bridging Glycosidic Oxygen (angled upward from β-C1 of Galactose)
+                const bridgeO = [0, 0.65, 0.25];
+                addAtom(moleculeGroup, 'Highlight', bridgeO);
+                addBond(moleculeGroup, left.C1, bridgeO, 'GlycosidicBond', 0.14);
+                addBond(moleculeGroup, bridgeO, right.C4, 'GlycosidicBond', 0.14);
+
+            } else if (key === 'sucrose') {
+                // Left α-D-glucose (C1) + Right β-D-fructose (C2)
+                const left = createPyranoseUnit(moleculeGroup, [-2.2, 0, 0], { alpha: true, omitC1OH: true, highlightC1: true });
+                const right = createFuranoseUnit(moleculeGroup, [2.1, -0.2, 0], { omitC2OH: true, highlightC2: true });
+
+                const bridgeO = [0, -0.6, 0.1];
+                addAtom(moleculeGroup, 'Highlight', bridgeO);
+                addBond(moleculeGroup, left.C1, bridgeO, 'GlycosidicBond', 0.14);
+                addBond(moleculeGroup, bridgeO, right.C2, 'GlycosidicBond', 0.14);
+
+            } else if (key === 'starch') {
+                // Helical chain of 9 glucose ring units (Amylose)
+                const numUnits = 9;
+                const radius = 2.2;
+                const angleStep = (Math.PI * 2) / 5.5; // ~5.5-6 units per turn
+                const pitch = 0.65;
+                let prevC1 = null;
+
+                for (let i = 0; i < numUnits; i++) {
+                    const angle = i * angleStep;
+                    const y = (i - numUnits / 2) * pitch;
+                    const x = Math.cos(angle) * radius;
+                    const z = Math.sin(angle) * radius;
+
+                    const unitGroup = new THREE.Group();
+                    unitGroup.position.set(x, y, z);
+                    unitGroup.rotation.y = -angle + Math.PI / 2;
+
+                    const ringPts = [
+                        [0.65, 0, 0],
+                        [0.32, -0.1, 0.55],
+                        [-0.32, 0, 0.55],
+                        [-0.65, -0.1, 0],
+                        [-0.32, 0.1, -0.55],
+                        [0.32, 0.1, -0.55]
+                    ];
+
+                    ringPts.forEach((pt, idx) => {
+                        addAtom(unitGroup, idx === 5 ? 'RingO' : 'C', pt);
+                        const nextPt = ringPts[(idx + 1) % 6];
+                        addBond(unitGroup, pt, nextPt, 'Bond', 0.09);
+                    });
+
+                    moleculeGroup.add(unitGroup);
+
+                    unitGroup.updateMatrixWorld();
+                    const c1World = new THREE.Vector3(0.65, 0, 0).applyMatrix4(unitGroup.matrixWorld);
+                    const c4World = new THREE.Vector3(-0.65, -0.1, 0).applyMatrix4(unitGroup.matrixWorld);
+
+                    if (prevC1) {
+                        const midO = prevC1.clone().add(c4World).multiplyScalar(0.5);
+                        midO.y -= 0.25;
+                        addAtom(moleculeGroup, 'Highlight', [midO.x, midO.y, midO.z]);
+                        addBond(moleculeGroup, [prevC1.x, prevC1.y, prevC1.z], [midO.x, midO.y, midO.z], 'GlycosidicBond', 0.11);
+                        addBond(moleculeGroup, [midO.x, midO.y, midO.z], [c4World.x, c4World.y, c4World.z], 'GlycosidicBond', 0.11);
+                    }
+                    prevC1 = c1World;
+                }
+
+            } else if (key === 'glycogen') {
+                // Helper to create a compact pyranose ring for polysaccharide networks
+                const addCompactRing = (pos, rotZ = 0, rotY = 0) => {
+                    const g = new THREE.Group();
+                    g.position.set(...pos);
+                    g.rotation.set(0, rotY, rotZ);
+                    const pts = [
+                        [0.6, 0, 0],       // C1
+                        [0.3, -0.08, 0.5], // C2
+                        [-0.3, 0, 0.5],    // C3
+                        [-0.6, -0.08, 0],  // C4
+                        [-0.3, 0.08, -0.5],// C5
+                        [0.3, 0.08, -0.5]  // O5
+                    ];
+                    pts.forEach((pt, idx) => {
+                        addAtom(g, idx === 5 ? 'RingO' : 'C', pt);
+                        addBond(g, pt, pts[(idx + 1) % 6], 'Bond', 0.08);
+                    });
+                    moleculeGroup.add(g);
+                    g.updateMatrixWorld();
+                    return {
+                        C1: new THREE.Vector3(0.6, 0, 0).applyMatrix4(g.matrixWorld),
+                        C4: new THREE.Vector3(-0.6, -0.08, 0).applyMatrix4(g.matrixWorld),
+                        C6: new THREE.Vector3(-0.35, 0.45, -0.55).applyMatrix4(g.matrixWorld)
+                    };
+                };
+
+                // Main α(1->4) chain (5 units)
+                const mainChain = [];
+                for (let i = 0; i < 5; i++) {
+                    const x = (i - 2) * 1.85;
+                    const y = -1.1 + Math.sin(i * 0.5) * 0.25;
+                    const z = Math.cos(i * 0.5) * 0.3;
+                    mainChain.push(addCompactRing([x, y, z], 0.1));
+                    if (i > 0) {
+                        const prev = mainChain[i - 1].C1;
+                        const curr = mainChain[i].C4;
+                        const midO = prev.clone().add(curr).multiplyScalar(0.5);
+                        midO.y -= 0.28;
+                        addAtom(moleculeGroup, 'Highlight', [midO.x, midO.y, midO.z]);
+                        addBond(moleculeGroup, [prev.x, prev.y, prev.z], [midO.x, midO.y, midO.z], 'GlycosidicBond', 0.1);
+                        addBond(moleculeGroup, [midO.x, midO.y, midO.z], [curr.x, curr.y, curr.z], 'GlycosidicBond', 0.1);
+                    }
+                }
+
+                // Upper Branch 1 via α(1->6) from unit index 1
+                const branch1 = [];
+                for (let j = 0; j < 3; j++) {
+                    const bx = -1.4 + j * 1.75;
+                    const by = 0.85 + j * 0.35;
+                    const bz = -0.5;
+                    branch1.push(addCompactRing([bx, by, bz], 0.2));
+                    if (j > 0) {
+                        const prev = branch1[j - 1].C1;
+                        const curr = branch1[j].C4;
+                        const midO = prev.clone().add(curr).multiplyScalar(0.5);
+                        midO.y -= 0.25;
+                        addAtom(moleculeGroup, 'Highlight', [midO.x, midO.y, midO.z]);
+                        addBond(moleculeGroup, [prev.x, prev.y, prev.z], [midO.x, midO.y, midO.z], 'GlycosidicBond', 0.1);
+                        addBond(moleculeGroup, [midO.x, midO.y, midO.z], [curr.x, curr.y, curr.z], 'GlycosidicBond', 0.1);
+                    }
+                }
+                // α(1->6) Cyan Branch Bridge (from branch1[0].C1 to mainChain[1].C6)
+                const b1C1 = branch1[0].C1;
+                const m1C6 = mainChain[1].C6;
+                const branchO1 = b1C1.clone().add(m1C6).multiplyScalar(0.5);
+                addAtom(moleculeGroup, 'BranchLink', [branchO1.x, branchO1.y, branchO1.z]);
+                addBond(moleculeGroup, [b1C1.x, b1C1.y, b1C1.z], [branchO1.x, branchO1.y, branchO1.z], 'DoubleBond', 0.12);
+                addBond(moleculeGroup, [branchO1.x, branchO1.y, branchO1.z], [m1C6.x, m1C6.y, m1C6.z], 'DoubleBond', 0.12);
+
+                // Sub-branch 2 via α(1->6) from branch1[1]
+                const subBranch = addCompactRing([0.8, 2.5, -0.9], 0.25);
+                const sbC1 = subBranch.C1;
+                const b1C6 = branch1[1].C6;
+                const branchO2 = sbC1.clone().add(b1C6).multiplyScalar(0.5);
+                addAtom(moleculeGroup, 'BranchLink', [branchO2.x, branchO2.y, branchO2.z]);
+                addBond(moleculeGroup, [sbC1.x, sbC1.y, sbC1.z], [branchO2.x, branchO2.y, branchO2.z], 'DoubleBond', 0.12);
+                addBond(moleculeGroup, [branchO2.x, branchO2.y, branchO2.z], [b1C6.x, b1C6.y, b1C6.z], 'DoubleBond', 0.12);
+
+            } else if (key === 'cellulose') {
+                // 3 parallel β(1->4) linear chains forming a microfibril sheet
+                const rows = [-1.6, 0, 1.6];
+                const unitsPerRow = 5;
+
+                rows.forEach((rowZ, rIdx) => {
+                    let prevC1 = null;
+                    for (let i = 0; i < unitsPerRow; i++) {
+                        const x = (i - 2) * 1.85;
+                        const flipped = i % 2 === 1; // Alternate 180° flip characteristic of β(1->4) glucan
+
+                        const g = new THREE.Group();
+                        g.position.set(x, 0, rowZ);
+                        g.rotation.x = flipped ? Math.PI : 0;
+
+                        const pts = [
+                            [0.62, 0, 0],       // C1
+                            [0.31, -0.06, 0.52],// C2
+                            [-0.31, 0, 0.52],   // C3
+                            [-0.62, -0.06, 0],  // C4
+                            [-0.31, 0.06, -0.52],// C5
+                            [0.31, 0.06, -0.52] // O5
+                        ];
+
+                        pts.forEach((pt, idx) => {
+                            addAtom(g, idx === 5 ? 'RingO' : 'C', pt);
+                            addBond(g, pt, pts[(idx + 1) % 6], 'Bond', 0.08);
+                        });
+
+                        moleculeGroup.add(g);
+                        g.updateMatrixWorld();
+
+                        const c1World = new THREE.Vector3(0.62, 0, 0).applyMatrix4(g.matrixWorld);
+                        const c4World = new THREE.Vector3(-0.62, -0.06, 0).applyMatrix4(g.matrixWorld);
+
+                        // β(1->4) Glycosidic bond along chain
+                        if (prevC1) {
+                            const midO = prevC1.clone().add(c4World).multiplyScalar(0.5);
+                            addAtom(moleculeGroup, 'Highlight', [midO.x, midO.y, midO.z]);
+                            addBond(moleculeGroup, [prevC1.x, prevC1.y, prevC1.z], [midO.x, midO.y, midO.z], 'GlycosidicBond', 0.1);
+                            addBond(moleculeGroup, [midO.x, midO.y, midO.z], [c4World.x, c4World.y, c4World.z], 'GlycosidicBond', 0.1);
+                        }
+                        prevC1 = c1World;
+
+                        // Inter-chain Hydrogen Bonds (cyan struts between parallel sheets)
+                        if (rIdx < rows.length - 1) {
+                            const nextRowZ = rows[rIdx + 1];
+                            addBond(
+                                moleculeGroup,
+                                [x, 0, rowZ + 0.55],
+                                [x, 0, nextRowZ - 0.55],
+                                'DoubleBond',
+                                0.055
+                            );
+                        }
+                    }
+                });
+            }
+        }
+
+        // Mouse & Touch Orbit Controls
+        function setupControls(container) {
+            container.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            });
+
+            window.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                const deltaX = e.clientX - previousMousePosition.x;
+                const deltaY = e.clientY - previousMousePosition.y;
+                moleculeGroup.rotation.y += deltaX * 0.01;
+                moleculeGroup.rotation.x += deltaY * 0.01;
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            });
+
+            // Touch Support
+            container.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 1) {
+                    isDragging = true;
+                    previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                }
+            }, { passive: true });
+
+            container.addEventListener('touchend', () => {
+                isDragging = false;
+            });
+
+            container.addEventListener('touchmove', (e) => {
+                if (!isDragging || e.touches.length !== 1) return;
+                const deltaX = e.touches[0].clientX - previousMousePosition.x;
+                const deltaY = e.touches[0].clientY - previousMousePosition.y;
+                moleculeGroup.rotation.y += deltaX * 0.012;
+                moleculeGroup.rotation.x += deltaY * 0.012;
+                previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            }, { passive: true });
+
+            // Zoom via Scroll Wheel
+            container.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                camera.position.z += e.deltaY * 0.008;
+                camera.position.z = Math.max(5.5, Math.min(20, camera.position.z));
+            }, { passive: false });
+
+            // UI Button Listeners
+            document.querySelectorAll('.mol-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.mol-btn').forEach(b => {
+                        b.classList.remove('tab-active', 'text-white');
+                        b.classList.add('bg-slate-800/90', 'text-slate-300');
+                    });
+                    btn.classList.add('tab-active', 'text-white');
+                    btn.classList.remove('bg-slate-800/90', 'text-slate-300');
+
+                    const key = btn.getAttribute('data-model');
+                    currentModelKey = key;
+                    buildMolecule(key);
+
+                    // Update caption
+                    const info = MODEL_DATA[key];
+                    document.getElementById('model-title').textContent = info.title;
+                    document.getElementById('model-formula').textContent = info.formula;
+                    document.getElementById('model-desc').textContent = info.desc;
+                });
+            });
+
+            document.getElementById('btn-toggle-rotate').addEventListener('click', function() {
+                autoRotate = !autoRotate;
+                this.querySelector('span').textContent = `Auto-Spin: ${autoRotate ? 'ON' : 'OFF'}`;
+            });
+
+            document.getElementById('btn-reset-cam').addEventListener('click', () => {
+                camera.position.set(0, 1.5, 11);
+                moleculeGroup.rotation.set(0.25, -0.3, 0);
+            });
+        }
+
+        // Main Render Loop
+        function animate() {
+            requestAnimationFrame(animate);
+            if (autoRotate && !isDragging && moleculeGroup) {
+                moleculeGroup.rotation.y += 0.006;
+            }
+            renderer.render(scene, camera);
+        }
+
+        // Start on Window Load
+        window.onload = function() {
+            initThree();
+            animate();
+        };
+    </script>
+</body>
+</html>
