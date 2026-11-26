@@ -65,6 +65,31 @@
       color: #FFFFFF !important;
       animation: pulseGlow 1.4s infinite;
     }
+
+    /* Light reading theme for the course interface and 3D stage. */
+    html, body { color-scheme: light; background: #f4f7f8; color: #192e38; }
+    body > header, #lecture-drawer, #lecture-drawer > div:first-child,
+    #syllabus-modal .glass-panel { background: #fff !important; border-color: #cbd8dd !important; }
+    #lecture-drawer { background: #f4f7f8 !important; }
+    .glass-panel, .glass-card { background: #fff !important; border-color: #cbd8dd !important; box-shadow: 0 4px 14px #18344114; }
+    #webgl-3d-wrapper { background: radial-gradient(ellipse at top, #fff, #dae8ee); }
+    body [class*="text-[#FAF9F6]"], body [class*="text-[#CBD5E1]"],
+    body [class*="text-[#94A3B8]"], body .text-slate-300, body .text-slate-200,
+    body .text-white { color: #243c48; }
+    body [class*="text-[#7DD3FC]"], body [class*="text-[#38BDF8]"],
+    body .text-sky-200, body .text-sky-300 { color: #075b76; }
+    body [class*="text-[#34D399]"] { color: #08604d; }
+    body [class*="text-[#FBBF24]"] { color: #785007; }
+    body [class*="border-white/"] { border-color: #d6e0e5; }
+    #btn-toggle-notes, #lecture-drawer button { background: #e4f1f5; border-color: #bdd7e1; }
+    #btn-toggle-notes:hover, #lecture-drawer button:hover, .glass-panel:is(button):hover { background: #d8eaf1 !important; }
+    #stage-3d-badge, #stage-2d-badge { color: #12556a !important; }
+    #lecture-content-scroll h3 { font-size: 1rem; line-height: 1.35; }
+    #lecture-content-scroll p, #lecture-content-scroll li { font-size: .94rem; line-height: 1.65; }
+    #lecture-content-scroll .glass-card { padding: 1.1rem; box-shadow: none; }
+    .lecture-scroll::-webkit-scrollbar-track { background: #e5edf0; }
+    .lecture-scroll::-webkit-scrollbar-thumb { background: #8ca8b5; }
+    button:focus-visible, a:focus-visible { outline: 2px solid #086a89; outline-offset: 2px; }
   </style>
 </head>
 <body class="flex flex-col w-screen h-screen overflow-hidden select-none">
@@ -2232,7 +2257,7 @@
       const canvas = document.getElementById('webgl-3d-canvas');
       const wrapper = document.getElementById('webgl-3d-wrapper');
       scene3D = new THREE.Scene();
-      scene3D.fog = new THREE.FogExp2(0x07191E, 0.012);
+      scene3D.fog = new THREE.FogExp2(0xe5eef2, 0.012);
 
       camera3D = new THREE.PerspectiveCamera(45, (wrapper.clientWidth || 800) / (wrapper.clientHeight || 600), 0.1, 150);
       camera3D.position.set(0, 0, currentZoom);
