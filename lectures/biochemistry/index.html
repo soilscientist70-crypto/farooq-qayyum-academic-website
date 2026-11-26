@@ -90,6 +90,11 @@
     .lecture-scroll::-webkit-scrollbar-track { background: #e5edf0; }
     .lecture-scroll::-webkit-scrollbar-thumb { background: #8ca8b5; }
     button:focus-visible, a:focus-visible { outline: 2px solid #086a89; outline-offset: 2px; }
+    .animation-view-switch button { padding: .35rem .65rem; border: 1px solid #b8ccd5; border-radius: .5rem; color: #15495b; background: #fff; font-size: .82rem; font-weight: 700; }
+    .animation-view-switch button[aria-pressed="true"] { background: #12556a; border-color: #12556a; color: #fff; }
+    .animation-view-switch button:disabled { opacity: .55; cursor: default; }
+    #canvas-2d-wrapper { background: radial-gradient(ellipse at top, #183541, #0c2029); }
+    #animation-unavailable { padding: 2rem; }
   </style>
 </head>
 <body class="flex flex-col w-screen h-screen overflow-hidden select-none">
@@ -124,6 +129,10 @@
       </button>
       <button type="button" id="btn-music" onclick="toggleMusic()" aria-pressed="false" title="Play soft ambient sound" class="glass-panel rounded-xl px-3 py-2 text-xs font-bold text-white">Sound: Off</button>
     </div>
+    <div role="group" aria-label="Animation view" class="animation-view-switch flex items-center gap-1">
+      <button id="choose-2d" type="button" onclick="chooseAnimationView('2d')" aria-pressed="false">2D</button>
+      <button id="choose-3d" type="button" onclick="chooseAnimationView('3d')" aria-pressed="true">3D</button>
+    </div>
     <a href="../index.html" class="text-xs text-sky-300 underline">← Lecture Series</a>
   </header>
 
@@ -137,6 +146,7 @@
       <!-- ======================================================================
            UNIFIED 3D WEBGL STAGE (Chapters 1: Carbs, 2: Metabolism, 4: Proteins)
            ====================================================================== -->
+      <p id="animation-unavailable" role="status" class="hidden">This chapter's 3D animation requires WebGL. The theory notes are available alongside it.</p>
       <div id="view-3d-stage" class="w-full h-full relative">
         <div id="webgl-3d-wrapper">
           <canvas id="webgl-3d-canvas"></canvas>
@@ -839,6 +849,16 @@
     // ============================================================================
     // GLOBAL HUB STATE & UNIFIED 3D WEBGL ENGINE (CARBS + METABOLISM + PROTEINS)
     // ============================================================================
+    const twoDTopics = {"carbohydrates":[{"id":"mono","tabLabel":"1. Monosaccharides & Rings","badge":"Chapter 1.2–1.4 · Monomers & Ring Closure","title":"Monosaccharides, Pyranose/Furanose & Anomers","desc":"In water, open-chain D-glucose closes into a 6-membered glucopyranose ring (α or β anomer via mutarotation), while D-fructose & ribose form 5-membered furanose rings."},{"id":"di","tabLabel":"2. Disaccharides","badge":"Chapter 1.5–1.6 · Glycosidic Bonds","title":"Sucrose, Lactose & Maltose (Reducing vs. Non-Reducing)","desc":"Condensation forms glycosidic bonds. Maltose α(1→4) and Lactose β(1→4) retain a free anomeric reducing end, whereas Sucrose α(1→2) locks both anomeric carbons."},{"id":"poly","tabLabel":"3. Polysaccharides","badge":"Chapter 1.7 · Storage vs. Structural Architecture","title":"Starch, Glycogen & Cellulose Architecture","desc":"α(1→4) bonds create digestible helical storage chains (branched via α(1→6) every ~10 residues in glycogen), while β(1→4) bonds form straight structural cellulose fibrils."}],"metabolism":[{"id":"glycolysis","tabLabel":"1. Glycolysis (10 Steps)","badge":"Chapter 2.1–2.3 · Cytoplasmic Pathway","title":"Preparatory & Payoff Phases of Glycolysis","desc":"Glucose (6C) is phosphorylated using 2 ATP and cleaved into two 3C G3P molecules, yielding 4 ATP, 2 NADH, and 2 Pyruvate (net +2 ATP per glucose)."},{"id":"krebs","tabLabel":"2. Citric Acid (Krebs) Cycle","badge":"Chapter 2.4 · Mitochondrial Matrix Hub","title":"Acetyl-CoA Oxidation in the Tricarboxylic Acid Cycle","desc":"Acetyl-CoA (2C) condenses with Oxaloacetate (4C) to form Citrate (6C), completing two decarboxylations per turn to generate 3 NADH, 1 FADH₂, and 1 GTP/ATP."},{"id":"oxphos","tabLabel":"3. ETC & Oxidative Phosphorylation","badge":"Chapter 2.5 · Chemiosmotic ATP Synthesis","title":"Mitochondrial Electron Transport & Rotary ATP Synthase","desc":"Complexes I, III, and IV pump H⁺ into the intermembrane space as electrons flow to O₂ (forming H₂O), powering chemiosmotic synthesis of ~30–32 ATP per glucose."}],"photosynthesis":[{"id":"light","tabLabel":"1. Light Reaction (Z-Scheme)","badge":"Chapter 3.1 · Thylakoid Electron Transport","title":"Linear & Cyclic Electron Flow (PSII & PSI)","desc":"Photons excite P680 (PSII) and P700 (PSI) on the redox scale, splitting H₂O to evolve O₂ and reducing NADP⁺ to NADPH (or cycling via Cyt b₆f for extra ATP)."},{"id":"photophos","tabLabel":"2. Photophosphorylation","badge":"Chapter 3.1b · Chemiosmotic Coupling","title":"Thylakoid Proton Gradient & CFo–CF₁ ATP Synthase","desc":"Proton accumulation acidifies the thylakoid lumen relative to the alkaline stroma, driving H⁺ efflux through CFo–CF₁ ATP synthase to phosphorylate ADP."},{"id":"calvin","tabLabel":"3. Calvin Cycle","badge":"Chapter 3.2 · Stroma Carbon Assimilation","title":"Carboxylation (RUBISCO), Reduction & RuBP Regeneration","desc":"Three turns fix 3 CO₂ onto RuBP via RUBISCO, consuming 9 ATP and 6 NADPH to export 1 net G3P triose phosphate for sucrose and starch synthesis."},{"id":"photoresp","tabLabel":"4. Photorespiration & ROS","badge":"Chapter 3.3 · Thermal & Oxidative Stress","title":"RUBISCO Oxygenation & Mehler ROS Detoxification","desc":"High temperatures elevate the O₂/CO₂ ratio and trigger wasteful RuBP oxygenation, while SOD and ascorbate peroxidase detoxify superoxide (•O₂⁻) into water."},{"id":"c4","tabLabel":"5. C4 Kranz Pathway","badge":"Chapter 3.4a · Spatial CO₂ Pump","title":"Mesophyll-to-Bundle Sheath Malate Shuttle (Maize)","desc":"PEP carboxylase captures HCO₃⁻ into 4C malate in mesophyll cells and decarboxylates it inside bundle sheath cells, saturating RUBISCO with CO₂."},{"id":"cam","tabLabel":"6. CAM Pathway","badge":"Chapter 3.4b · Temporal Water Conservation","title":"Nocturnal Vacuolar Malic Acid Storage & Daytime Refixation","desc":"Desert succulents open stomata at night to store malic acid in vacuoles and close stomata during the hot day to release CO₂ internally, saving 80–90% water."}],"enzymes":[{"id":"ea_curve","tabLabel":"1. Activation Energy (Ea)","badge":"Chapter 5.3–5.4 · Transition State Catalysis","title":"Lowering Activation Energy Without Altering ΔG","desc":"Enzymes stabilize the transition state, dramatically lowering Ea and boosting reaction velocity 10³–10⁸× without changing overall ΔG or equilibrium constant Keq."},{"id":"active_site","tabLabel":"2. Active Site & Cofactors","badge":"Chapter 5.5 · Holoenzyme Assembly","title":"Induced-Fit Model & Apoenzyme + Cofactor","desc":"Substrate binding induces conformational wrap at the active site. An inactive Apoenzyme requires a metal ion (Zn²⁺, Mg²⁺) or vitamin Coenzyme (NAD⁺, FAD) to form an active Holoenzyme."},{"id":"regulation","tabLabel":"3. Allosteric Regulation","badge":"Chapter 5.5 · Metabolic Feedback Control","title":"Allosteric Activators & Feedback Inhibition","desc":"Positive or negative effectors bind regulatory allosteric sites away from the active site, inducing conformational shifts that switch metabolic pathways ON or OFF."},{"id":"classes_anim","tabLabel":"4. 6 Enzyme Classes (Animated)","badge":"Chapter 5.6–5.7 · Live IUBMB Catalytic Mechanisms","title":"Animated Mechanisms of Six Traditional Enzyme Classes","desc":"Select any of the 6 IUBMB classes (EC 1–EC 6) to watch live bond cleavage, electron transfer, group transfer, double-bond formation, isomerization, or ATP-coupled ligation."}],"lipids":[{"id":"fatty_acids","tabLabel":"1. Fatty Acids & TAG Packing","badge":"Chapter 6.1–6.5 · Saturation & Energy Density","title":"Saturated vs. Cis/Trans Unsaturated Chains & TAG Storage","desc":"Cis double bonds introduce ~30° kinks that prevent tight Van der Waals packing (liquid oils), while anhydrous triacylglycerols store 37 kJ/g (>2× carbohydrate energy)."},{"id":"membranes","tabLabel":"2. Membranes & Lipoproteins","badge":"Chapter 6.6–6.7 · Bilayers & Cholesterol Transport","title":"Phospholipid Bilayer Fluidity & LDL vs. HDL Shuttle","desc":"Amphipathic glycerophospholipids and cholesterol form selective bilayers, while LDL delivers cholesterol to peripheral tissues and HDL returns excess cholesterol to the liver."},{"id":"beta_ox","tabLabel":"3. Fatty Acid β-Oxidation","badge":"Chapter 6.8 · Mitochondrial Spiral","title":"Four-Step β-Oxidation of Palmitic Acid (16:0)","desc":"Seven mitochondrial cycles cleave 2-carbon Acetyl-CoA units from palmitoyl-CoA via oxidation, hydration, oxidation, and thiolysis, yielding 8 Acetyl-CoA, 7 FADH₂, and 7 NADH."}],"dna":[{"id":"helix","tabLabel":"1. DNA Double Helix & Melting","badge":"Chapter 7.1–7.5 · Base Pairing & Tm","title":"Antiparallel Watson-Crick Duplex (A=T vs. G≡C)","desc":"Antiparallel strands pair via A=T (2 H-bonds) and G≡C (3 H-bonds). Increasing GC% raises the melting temperature (Tm) required to denature the duplex."},{"id":"replication","tabLabel":"2. Semiconservative Replication","badge":"Chapter 7.10 · Replication Fork Mechanics","title":"Leading Strand vs. Lagging Strand Okazaki Fragments","desc":"Helicase unwinds parental DNA while DNA Polymerase III synthesizes exclusively 5'→3'—continuously on the leading strand and via ligated Okazaki fragments on the lagging strand."},{"id":"dogma","tabLabel":"3. Transcription & Translation","badge":"Chapter 7.7–7.9 · DNA → RNA → Protein","title":"mRNA Processing & Ribosomal Codon Translation","desc":"RNA Polymerase transcribes template DNA into mRNA (processed via 5' cap, intron splicing & 3' poly-A tail), which ribosomes translate from AUG start to UAA/UAG/UGA stop."}],"life_reactions":[{"id":"soil_biochem","tabLabel":"1. Soil Biogeochemistry","badge":"Chapter 8.1 · Rhizosphere & Nutrient Cycling","title":"Nitrogen Fixation, Nitrification & Humus Mineralization","desc":"Rhizobium nitrogenase reduces atmospheric N₂ to NH₄⁺; Nitrosomonas and Nitrobacter oxidize NH₄⁺ to NO₂⁻ and NO₃⁻; decomposers mineralize organic matter into plant-available ions."},{"id":"plant_biochem","tabLabel":"2. Plant Vital Reactions","badge":"Chapter 8.2 · Mineral Uptake & Assimilation","title":"Root H⁺-ATPase Pump, Nitrate Assimilation & Phloem Transport","desc":"Root H⁺-ATPase pumps protons to drive NO₃⁻/K⁺ uptake; Nitrate & Nitrite Reductases convert NO₃⁻ to NH₄⁺ for glutamine synthesis while phloem loads sucrose to growing sinks."},{"id":"human_biochem","tabLabel":"3. Human Homeostasis","badge":"Chapter 8.3 · Blood Buffer, Urea Cycle & O₂ Transport","title":"Bicarbonate Blood Buffer, Hepatic Urea Cycle & Bohr Effect","desc":"Carbonic anhydrase maintains blood pH 7.35–7.45 via HCO₃⁻; the liver detoxifies neurotoxic NH₃ into Urea; hemoglobin unloads O₂ in acidic, CO₂-rich tissues."}],"practicals":[{"id":"prac_moisture_ash","tabLabel":"1. Moisture & Ash","badge":"Experiment 1A–1B · Gravimetric Oven & Furnace","title":"Moisture (100°C Vacuum Oven) & Ash (550°C Muffle Furnace)","desc":"Moisture is determined by weight loss at 95–100°C until constant weight (<5 mg change); Ash is determined by igniting organic carbon at 550°C to isolate inorganic minerals."},{"id":"prac_protein","tabLabel":"2. Crude & True Protein","badge":"Experiment 1C · Kjeldahl & 10% TCA Precipitation","title":"Kjeldahl Crude Protein (N% × 6.25) vs. True Protein (TCA)","desc":"Kjeldahl digestion, distillation, and titration measure total nitrogen (×6.25 = Crude Protein), while 10% TCA precipitates True Protein to separate Non-Protein Nitrogen (NPN)."},{"id":"prac_fat_fiber","tabLabel":"3. Crude Fat & Crude Fiber","badge":"Experiment 1D–1E · Soxhlet & Acid-Alkali Digestion","title":"Soxhlet Ether Extraction (Fat) & Sequential Digestion (Fiber)","desc":"Soxhlet reflux extracts ether-soluble lipids over repeated siphon cycles; Crude Fiber isolates indigestible cellulose/lignin after boiling in 1.25% H₂SO₄ and 1.25% NaOH."},{"id":"prac_nfe_vitc","tabLabel":"4. NFE & Vitamin C","badge":"Experiment 1F & Exp 2 · Soluble Carbs & DCPIP Titration","title":"Nitrogen-Free Extract (NFE) & Vitamin C Redox Titration","desc":"NFE estimates digestible carbohydrates by subtracting all other proximate fractions from 100%; Vitamin C (ascorbic acid) reduces blue DCPIP dye to colorless until a pink endpoint."}]};
+    const companion3D = { mono: 'glucose_chain', di: 'maltose', poly: 'starch', krebs: 'citric_acid_cycle', oxphos: 'phosphorylation' };
+    const companion2D = {
+      glucose_chain: 'mono', glucose_ring: 'mono', fructose_ring: 'mono',
+      maltose: 'di', lactose: 'di', sucrose: 'di', starch: 'poly', glycogen: 'poly', cellulose: 'poly',
+      citric_acid_cycle: 'krebs', phosphorylation: 'oxphos'
+    };
+    let preferredView = '3d';
+    let currentView = '3d';
+    let webglAvailable = true;
     let activeModule = 'carbohydrates';
     let activeSubtopic = 'glucose_chain';
     let lectureDrawerOpen = true;
@@ -851,7 +871,7 @@
     let prevPointer3D = { x: 0, y: 0 };
     let targetRotX = 0.22, targetRotY = -0.32, currentRotX = 0.22, currentRotY = -0.32;
     let targetZoom = 8.5, currentZoom = 8.5, initialPinchDist = null;
-    let clock3D = new THREE.Clock();
+    let clock3D = window.THREE ? new THREE.Clock() : null;
 
     // Carbs & Metabolism 3D objects
     let animatedObjects3D = [];
@@ -869,8 +889,8 @@
     const NUM_CHAINS = 4;
     let chains3D = [], bondCylinders3D = [], hemeMeshes3D = [], aminoAcidGroup3D = null;
 
-    const tmpVecA = new THREE.Vector3(), tmpVecB = new THREE.Vector3(), tmpMid = new THREE.Vector3();
-    const tmpDir = new THREE.Vector3(), tmpUp = new THREE.Vector3(0, 1, 0), tmpQuat = new THREE.Quaternion();
+    const tmpVecA = window.THREE && new THREE.Vector3(), tmpVecB = window.THREE && new THREE.Vector3(), tmpMid = window.THREE && new THREE.Vector3();
+    const tmpDir = window.THREE && new THREE.Vector3(), tmpUp = window.THREE && new THREE.Vector3(0, 1, 0), tmpQuat = window.THREE && new THREE.Quaternion();
 
     // Shared 3D Materials
     const mat3D = {
@@ -2396,7 +2416,7 @@
     function render3DLoop(time) {
       requestAnimationFrame(render3DLoop);
       const mod = COURSE_MODULES[activeModule];
-      if (!mod || !mod.is3D) return;
+      if (!mod || currentView !== '3d' || !webglAvailable) return;
 
       const elapsed = clock3D.getElapsedTime();
 
@@ -2742,6 +2762,8 @@
     // ============================================================================
     let sim2DPaused = false, sim2DTour = false, sim2DTourTimer = 0, sim2DTime = 0, last2DTs = 0;
     const simParams = {
+      carbAnomer: 'alpha', carbDisacc: 'maltose', carbPoly: 'glycogen',
+      glycOxygen: true, metabSpeed: 1, oxphosO2: true,
       electronMode: 'linear', lightIntensity: 1.0, calvinSpeed: 1.0, temperatureC: 25, camPhase: 'auto',
       enzCatalyzed: true, enzTemp: 37, enzCofactor: true, enzEffector: 'positive', enzClassIdx: 0, enzClassAuto: true,
       lipidSaturation: 'cis', betaOxCycle: 1,
@@ -2834,24 +2856,45 @@
     function switchCourseModule(moduleKey) {
       stopNarration();
       activeModule = moduleKey;
-      syncMusic();
       buildTopModuleNav();
       renderLectureNotes(moduleKey);
+      showAnimationView();
+      syncMusic();
+    }
 
-      const mod = COURSE_MODULES[moduleKey];
-      const view3D = document.getElementById('view-3d-stage');
+    function chooseAnimationView(view) {
+      if (view === currentView || (view === '2d' && !twoDTopics[activeModule]) || (view === '3d' && !webglAvailable)) return;
+      preferredView = view;
+      showAnimationView(activeSubtopic);
+    }
+
+    function showAnimationView(previousTopic) {
+      const topics2D = twoDTopics[activeModule];
+      currentView = topics2D && (preferredView === '2d' || !webglAvailable) ? '2d' : '3d';
+      const unavailable = currentView === '3d' && !webglAvailable;
       const view2D = document.getElementById('view-2d-stage');
-
-      if (mod.is3D) {
-        view2D.classList.add('hidden');
-        view3D.classList.remove('hidden');
-        select3DSubtopic(mod.subtopics[0].id);
-        requestAnimationFrame(() => on3DResize());
+      const view3D = document.getElementById('view-3d-stage');
+      view2D.classList.toggle('hidden', currentView !== '2d');
+      view3D.classList.toggle('hidden', currentView !== '3d' || unavailable);
+      document.getElementById('animation-unavailable').classList.toggle('hidden', !unavailable);
+      for (const mode of ['2d', '3d']) {
+        const button = document.getElementById('choose-' + mode);
+        button.disabled = mode === '2d' ? !topics2D : !webglAvailable;
+        button.title = button.disabled ? (mode === '2d' ? 'This chapter has a 3D animation' : '3D requires WebGL') : 'Switch to ' + mode.toUpperCase();
+        button.setAttribute('aria-pressed', String(currentView === mode && !unavailable));
+      }
+      if (sim2DTour) toggle2DTour();
+      if (unavailable) return;
+      const use2D = currentView === '2d';
+      const topics = use2D ? topics2D : COURSE_MODULES[activeModule].subtopics;
+      const mapped = (use2D ? companion2D : companion3D)[previousTopic] || previousTopic;
+      const topicId = topics.find(topic => topic.id === mapped)?.id || topics[0].id;
+      if (use2D) {
+        select2DSubtopic(topicId);
+        requestAnimationFrame(resize2DCanvas);
       } else {
-        view3D.classList.add('hidden');
-        view2D.classList.remove('hidden');
-        select2DSubtopic(mod.subtopics[0].id);
-        requestAnimationFrame(() => resize2DCanvas());
+        select3DSubtopic(topicId);
+        requestAnimationFrame(on3DResize);
       }
     }
 
@@ -2859,10 +2902,11 @@
       if (!fromTour && sim2DTour) toggle2DTour();
       activeSubtopic = subId;
       const mod = COURSE_MODULES[activeModule];
-      if (!mod || mod.is3D) return;
+      const topics = twoDTopics[activeModule];
+      if (!topics || currentView !== '2d') return;
 
       const subnav = document.getElementById('stage-2d-subnav');
-      subnav.innerHTML = mod.subtopics.map(st => {
+      subnav.innerHTML = topics.map(st => {
         const isAct = st.id === subId;
         return `
           <button onclick="select2DSubtopic('${st.id}')"
@@ -2873,7 +2917,7 @@
         `;
       }).join('');
 
-      const info = mod.subtopics.find(s => s.id === subId) || mod.subtopics[0];
+      const info = topics.find(s => s.id === subId) || topics[0];
       const badgeEl = document.getElementById('stage-2d-badge');
       badgeEl.textContent = info.badge;
       badgeEl.style.color = mod.accent;
@@ -2885,17 +2929,72 @@
     function render2DDynamicControls() {
       const box = document.getElementById('stage-2d-dynamic-controls');
       const key = `${activeModule}:${activeSubtopic}`;
-      if (key === 'photosynthesis:light') {
+
+      if (key === 'carbohydrates:mono') {
+        box.innerHTML = `
+          <button onclick="simParams.carbAnomer='open';render2DDynamicControls();" class="glass-panel rounded-xl px-2.5 py-2 text-xs font-bold ${simParams.carbAnomer==='open'?'border-[#38BDF8] text-[#38BDF8]':'text-[#CBD5E1]'}">Open Chain</button>
+          <button onclick="simParams.carbAnomer='alpha';render2DDynamicControls();" class="glass-panel rounded-xl px-2.5 py-2 text-xs font-bold ${simParams.carbAnomer==='alpha'?'border-[#34D399] text-[#34D399]':'text-[#CBD5E1]'}">α-Anomer (OH Down)</button>
+          <button onclick="simParams.carbAnomer='beta';render2DDynamicControls();" class="glass-panel rounded-xl px-2.5 py-2 text-xs font-bold ${simParams.carbAnomer==='beta'?'border-[#FBBF24] text-[#FBBF24]':'text-[#CBD5E1]'}">β-Anomer (OH Up)</button>
+        `;
+      } else if (key === 'carbohydrates:di') {
+        box.innerHTML = `
+          <button onclick="simParams.carbDisacc='maltose';render2DDynamicControls();" class="glass-panel rounded-xl px-2.5 py-2 text-xs font-bold ${simParams.carbDisacc==='maltose'?'border-[#34D399] text-[#34D399]':'text-[#CBD5E1]'}">Maltose α(1→4)</button>
+          <button onclick="simParams.carbDisacc='lactose';render2DDynamicControls();" class="glass-panel rounded-xl px-2.5 py-2 text-xs font-bold ${simParams.carbDisacc==='lactose'?'border-[#38BDF8] text-[#38BDF8]':'text-[#CBD5E1]'}">Lactose β(1→4)</button>
+          <button onclick="simParams.carbDisacc='sucrose';render2DDynamicControls();" class="glass-panel rounded-xl px-2.5 py-2 text-xs font-bold ${simParams.carbDisacc==='sucrose'?'border-[#FBBF24] text-[#FBBF24]':'text-[#CBD5E1]'}">Sucrose α(1→2)</button>
+        `;
+      } else if (key === 'carbohydrates:poly') {
+        box.innerHTML = `
+          <button onclick="simParams.carbPoly='amylose';render2DDynamicControls();" class="glass-panel rounded-xl px-2.5 py-2 text-xs font-bold ${simParams.carbPoly==='amylose'?'border-[#38BDF8] text-[#38BDF8]':'text-[#CBD5E1]'}">Starch (Amylose)</button>
+          <button onclick="simParams.carbPoly='glycogen';render2DDynamicControls();" class="glass-panel rounded-xl px-2.5 py-2 text-xs font-bold ${simParams.carbPoly==='glycogen'?'border-[#34D399] text-[#34D399]':'text-[#CBD5E1]'}">Glycogen (Branched)</button>
+          <button onclick="simParams.carbPoly='cellulose';render2DDynamicControls();" class="glass-panel rounded-xl px-2.5 py-2 text-xs font-bold ${simParams.carbPoly==='cellulose'?'border-[#FBBF24] text-[#FBBF24]':'text-[#CBD5E1]'}">Cellulose β(1→4)</button>
+        `;
+      } else if (key === 'metabolism:glycolysis') {
+        box.innerHTML = `
+          <button onclick="simParams.glycOxygen=true;render2DDynamicControls();" class="glass-panel rounded-xl px-2.5 py-2 text-xs font-bold ${simParams.glycOxygen?'border-[#34D399] text-[#34D399]':'text-[#CBD5E1]'}">O₂ Present (Aerobic)</button>
+          <button onclick="simParams.glycOxygen=false;render2DDynamicControls();" class="glass-panel rounded-xl px-2.5 py-2 text-xs font-bold ${!simParams.glycOxygen?'border-[#F87171] text-[#F87171]':'text-[#CBD5E1]'}">Hypoxia (Fermentation)</button>
+        `;
+      } else if (key === 'metabolism:krebs') {
+        box.innerHTML = `
+          <div class="glass-panel rounded-xl px-3 py-1.5 flex items-center gap-2 text-xs font-semibold">
+            <i class="fa-solid fa-gauge-high text-[#FBBF24]"></i>
+            <span>Speed:</span>
+            <input type="range" min="0.4" max="2.0" step="0.1" value="${simParams.metabSpeed}" oninput="simParams.metabSpeed=parseFloat(this.value)" class="w-20">
+          </div>
+        `;
+      } else if (key === 'metabolism:oxphos') {
+        box.innerHTML = `
+          <button onclick="simParams.oxphosO2=true;render2DDynamicControls();" class="glass-panel rounded-xl px-2.5 py-2 text-xs font-bold ${simParams.oxphosO2?'border-[#34D399] text-[#34D399]':'text-[#CBD5E1]'}">O₂ Final Acceptor: Active</button>
+          <button onclick="simParams.oxphosO2=false;render2DDynamicControls();" class="glass-panel rounded-xl px-2.5 py-2 text-xs font-bold ${!simParams.oxphosO2?'border-[#EF4444] text-[#F87171]':'text-[#CBD5E1]'}">No O₂ / Cyanide Block</button>
+        `;
+      } else if (key === 'photosynthesis:light') {
         box.innerHTML = `
           <button onclick="simParams.electronMode='linear';render2DDynamicControls();" class="glass-panel rounded-xl px-2.5 py-2 text-xs font-bold ${simParams.electronMode==='linear'?'border-[#34D399] text-[#34D399]':'text-[#CBD5E1]'}">Linear Flow</button>
           <button onclick="simParams.electronMode='cyclic';render2DDynamicControls();" class="glass-panel rounded-xl px-2.5 py-2 text-xs font-bold ${simParams.electronMode==='cyclic'?'border-[#FBBF24] text-[#FBBF24]':'text-[#CBD5E1]'}">Cyclic Flow</button>
         `;
       } else if (key === 'photosynthesis:photophos') {
-        box.innerHTML = `<div class="glass-panel rounded-xl px-3 py-1.5 flex items-center gap-2 text-xs font-semibold"><i class="fa-solid fa-sun text-[#FBBF24]"></i><span>Light:</span><input type="range" min="0.3" max="1.8" step="0.1" value="${simParams.lightIntensity}" oninput="simParams.lightIntensity=parseFloat(this.value)" class="w-20"></div>`;
+        box.innerHTML = `
+          <div class="glass-panel rounded-xl px-3 py-1.5 flex items-center gap-2 text-xs font-semibold">
+            <i class="fa-solid fa-sun text-[#FBBF24]"></i>
+            <span>Light:</span>
+            <input type="range" min="0.3" max="1.8" step="0.1" value="${simParams.lightIntensity}" oninput="simParams.lightIntensity=parseFloat(this.value)" class="w-20">
+          </div>
+        `;
       } else if (key === 'photosynthesis:calvin') {
-        box.innerHTML = `<div class="glass-panel rounded-xl px-3 py-1.5 flex items-center gap-2 text-xs font-semibold"><i class="fa-solid fa-gauge-high text-[#34D399]"></i><span>Rate:</span><input type="range" min="0.4" max="2.0" step="0.1" value="${simParams.calvinSpeed}" oninput="simParams.calvinSpeed=parseFloat(this.value)" class="w-20"></div>`;
+        box.innerHTML = `
+          <div class="glass-panel rounded-xl px-3 py-1.5 flex items-center gap-2 text-xs font-semibold">
+            <i class="fa-solid fa-gauge-high text-[#34D399]"></i>
+            <span>Rate:</span>
+            <input type="range" min="0.4" max="2.0" step="0.1" value="${simParams.calvinSpeed}" oninput="simParams.calvinSpeed=parseFloat(this.value)" class="w-20">
+          </div>
+        `;
       } else if (key === 'photosynthesis:photoresp') {
-        box.innerHTML = `<div class="glass-panel rounded-xl px-3 py-1.5 flex items-center gap-2 text-xs font-semibold"><i class="fa-solid fa-temperature-three-quarters text-[#F87171]"></i><span>Temp: <strong id="ptemp-lbl" class="text-[#FBBF24]">${simParams.temperatureC}°C</strong></span><input type="range" min="10" max="40" step="1" value="${simParams.temperatureC}" oninput="simParams.temperatureC=parseInt(this.value,10);document.getElementById('ptemp-lbl').textContent=simParams.temperatureC+'°C';" class="w-20"></div>`;
+        box.innerHTML = `
+          <div class="glass-panel rounded-xl px-3 py-1.5 flex items-center gap-2 text-xs font-semibold">
+            <i class="fa-solid fa-temperature-three-quarters text-[#F87171]"></i>
+            <span>Temp: <strong id="ptemp-lbl" class="text-[#FBBF24]">${simParams.temperatureC}°C</strong></span>
+            <input type="range" min="10" max="40" step="1" value="${simParams.temperatureC}" oninput="simParams.temperatureC=parseInt(this.value,10);document.getElementById('ptemp-lbl').textContent=simParams.temperatureC+'°C';" class="w-20">
+          </div>
+        `;
       } else if (key === 'photosynthesis:cam') {
         box.innerHTML = `
           <button onclick="simParams.camPhase='auto';render2DDynamicControls();" class="glass-panel rounded-xl px-2.5 py-2 text-xs font-bold ${simParams.camPhase==='auto'?'border-[#34D399] text-[#34D399]':'text-[#CBD5E1]'}">Auto</button>
@@ -2904,41 +3003,73 @@
         `;
       } else if (key === 'enzymes:ea_curve') {
         box.innerHTML = `
-          <button onclick="simParams.enzCatalyzed=!simParams.enzCatalyzed;render2DDynamicControls();" class="glass-panel rounded-xl px-2.5 py-2 text-xs font-bold ${simParams.enzCatalyzed?'border-[#A855F7] text-[#D8B4FE]':'border-[#F87171] text-[#FCA5A5]'}">${simParams.enzCatalyzed?'Enzyme: PRESENT':'Enzyme: ABSENT'}</button>
-          <div class="glass-panel rounded-xl px-3 py-1.5 flex items-center gap-2 text-xs font-semibold"><span>Temp: <strong id="etemp-lbl" class="text-[#FBBF24]">${simParams.enzTemp}°C</strong></span><input type="range" min="10" max="70" step="1" value="${simParams.enzTemp}" oninput="simParams.enzTemp=parseInt(this.value,10);document.getElementById('etemp-lbl').textContent=simParams.enzTemp+'°C';" class="w-20"></div>
+          <button onclick="simParams.enzCatalyzed=!simParams.enzCatalyzed;render2DDynamicControls();" class="glass-panel rounded-xl px-2.5 py-2 text-xs font-bold ${simParams.enzCatalyzed?'border-[#A855F7] text-[#D8B4FE]':'border-[#F87171] text-[#FCA5A5]'}">${simParams.enzCatalyzed?'Enzyme: PRESENT (Low Ea)':'Enzyme: ABSENT (High Ea)'}</button>
+          <div class="glass-panel rounded-xl px-3 py-1.5 flex items-center gap-2 text-xs font-semibold">
+            <span>Temp: <strong id="etemp-lbl" class="text-[#FBBF24]">${simParams.enzTemp}°C</strong></span>
+            <input type="range" min="10" max="70" step="1" value="${simParams.enzTemp}" oninput="simParams.enzTemp=parseInt(this.value,10);document.getElementById('etemp-lbl').textContent=simParams.enzTemp+'°C';" class="w-20">
+          </div>
         `;
       } else if (key === 'enzymes:active_site') {
         box.innerHTML = `
           <button onclick="simParams.enzCofactor=true;render2DDynamicControls();" class="glass-panel rounded-xl px-2.5 py-2 text-xs font-bold ${simParams.enzCofactor?'border-[#34D399] text-[#34D399]':'text-[#CBD5E1]'}">Holoenzyme (+Cofactor)</button>
-          <button onclick="simParams.enzCofactor=false;render2DDynamicControls();" class="glass-panel rounded-xl px-2.5 py-2 text-xs font-bold ${!simParams.enzCofactor?'border-[#F87171] text-[#F87171]':'text-[#CBD5E1]'}">Apoenzyme</button>
+          <button onclick="simParams.enzCofactor=false;render2DDynamicControls();" class="glass-panel rounded-xl px-2.5 py-2 text-xs font-bold ${!simParams.enzCofactor?'border-[#F87171] text-[#F87171]':'text-[#CBD5E1]'}">Apoenzyme (No Cofactor)</button>
         `;
       } else if (key === 'enzymes:regulation') {
         box.innerHTML = `
-          <button onclick="simParams.enzEffector='positive';render2DDynamicControls();" class="glass-panel rounded-xl px-2.5 py-2 text-xs font-bold ${simParams.enzEffector==='positive'?'border-[#34D399] text-[#34D399]':'text-[#CBD5E1]'}">+ Activator</button>
-          <button onclick="simParams.enzEffector='negative';render2DDynamicControls();" class="glass-panel rounded-xl px-2.5 py-2 text-xs font-bold ${simParams.enzEffector==='negative'?'border-[#F87171] text-[#F87171]':'text-[#CBD5E1]'}">− Inhibitor</button>
+          <button onclick="simParams.enzEffector='positive';render2DDynamicControls();" class="glass-panel rounded-xl px-2.5 py-2 text-xs font-bold ${simParams.enzEffector==='positive'?'border-[#34D399] text-[#34D399]':'text-[#CBD5E1]'}">+ Allosteric Activator</button>
+          <button onclick="simParams.enzEffector='negative';render2DDynamicControls();" class="glass-panel rounded-xl px-2.5 py-2 text-xs font-bold ${simParams.enzEffector==='negative'?'border-[#F87171] text-[#F87171]':'text-[#CBD5E1]'}">− Allosteric Inhibitor</button>
         `;
       } else if (key === 'enzymes:classes_anim') {
         const ecNames = ['EC 1 Oxidoreductase', 'EC 2 Transferase', 'EC 3 Hydrolase', 'EC 4 Lyase', 'EC 5 Isomerase', 'EC 6 Ligase'];
-        box.innerHTML = ecNames.map((nm, idx) => `<button onclick="simParams.enzClassAuto=false;simParams.enzClassIdx=${idx};render2DDynamicControls();" class="glass-panel rounded-xl px-2 py-1.5 text-[11px] font-bold ${!simParams.enzClassAuto && simParams.enzClassIdx===idx?'border-[#D8B4FE] text-[#FBBF24] bg-[#6B21A8]/40':'text-[#CBD5E1]'}">${nm}</button>`).join('');
+        box.innerHTML = ecNames.map((nm, idx) => `
+          <button onclick="simParams.enzClassAuto=false;simParams.enzClassIdx=${idx};render2DDynamicControls();" class="glass-panel rounded-xl px-2 py-1.5 text-[11px] font-bold ${!simParams.enzClassAuto && simParams.enzClassIdx===idx?'border-[#D8B4FE] text-[#FBBF24] bg-[#6B21A8]/40':'text-[#CBD5E1]'}">${nm}</button>
+        `).join('') + `
+          <button onclick="simParams.enzClassAuto=!simParams.enzClassAuto;render2DDynamicControls();" class="glass-panel rounded-xl px-2.5 py-1.5 text-[11px] font-bold ${simParams.enzClassAuto?'border-[#34D399] text-[#34D399]':'text-[#94A3B8]'}">${simParams.enzClassAuto?'Auto-Cycle: ON':'Auto-Cycle: OFF'}</button>
+        `;
       } else if (key === 'lipids:fatty_acids') {
         box.innerHTML = `
           <button onclick="simParams.lipidSaturation='saturated';render2DDynamicControls();" class="glass-panel rounded-xl px-2.5 py-2 text-xs font-bold ${simParams.lipidSaturation==='saturated'?'border-[#FBBF24] text-[#FBBF24]':'text-[#CBD5E1]'}">Saturated (18:0)</button>
-          <button onclick="simParams.lipidSaturation='cis';render2DDynamicControls();" class="glass-panel rounded-xl px-2.5 py-2 text-xs font-bold ${simParams.lipidSaturation==='cis'?'border-[#EC4899] text-[#F472B6]':'text-[#CBD5E1]'}">Cis (18:1)</button>
-          <button onclick="simParams.lipidSaturation='trans';render2DDynamicControls();" class="glass-panel rounded-xl px-2.5 py-2 text-xs font-bold ${simParams.lipidSaturation==='trans'?'border-[#F87171] text-[#FCA5A5]':'text-[#CBD5E1]'}">Trans</button>
+          <button onclick="simParams.lipidSaturation='cis';render2DDynamicControls();" class="glass-panel rounded-xl px-2.5 py-2 text-xs font-bold ${simParams.lipidSaturation==='cis'?'border-[#EC4899] text-[#F472B6]':'text-[#CBD5E1]'}">Cis-Unsaturated (18:1)</button>
+          <button onclick="simParams.lipidSaturation='trans';render2DDynamicControls();" class="glass-panel rounded-xl px-2.5 py-2 text-xs font-bold ${simParams.lipidSaturation==='trans'?'border-[#F87171] text-[#FCA5A5]':'text-[#CBD5E1]'}">Trans-Fatty Acid</button>
         `;
       } else if (key === 'lipids:beta_ox') {
-        box.innerHTML = `<div class="glass-panel rounded-xl px-3 py-1.5 flex items-center gap-2 text-xs font-semibold"><span>Cycle: <strong id="box-lbl" class="text-[#FBBF24]">${simParams.betaOxCycle} / 7</strong></span><input type="range" min="1" max="7" step="1" value="${simParams.betaOxCycle}" oninput="simParams.betaOxCycle=parseInt(this.value,10);document.getElementById('box-lbl').textContent=simParams.betaOxCycle+' / 7';" class="w-20"></div>`;
+        box.innerHTML = `
+          <div class="glass-panel rounded-xl px-3 py-1.5 flex items-center gap-2 text-xs font-semibold">
+            <i class="fa-solid fa-fire text-[#F472B6]"></i>
+            <span>Palmitate Cycle: <strong id="box-lbl" class="text-[#FBBF24]">${simParams.betaOxCycle} / 7</strong></span>
+            <input type="range" min="1" max="7" step="1" value="${simParams.betaOxCycle}" oninput="simParams.betaOxCycle=parseInt(this.value,10);document.getElementById('box-lbl').textContent=simParams.betaOxCycle+' / 7';" class="w-20">
+          </div>
+        `;
       } else if (key === 'dna:helix') {
-        box.innerHTML = `<div class="glass-panel rounded-xl px-3 py-1.5 flex items-center gap-2 text-xs font-semibold"><span>Temp: <strong id="dnatemp-lbl" class="text-[#2DD4BF]">${simParams.dnaTemp}°C</strong></span><input type="range" min="25" max="95" step="1" value="${simParams.dnaTemp}" oninput="simParams.dnaTemp=parseInt(this.value,10);document.getElementById('dnatemp-lbl').textContent=simParams.dnaTemp+'°C';" class="w-20"></div>`;
+        box.innerHTML = `
+          <div class="glass-panel rounded-xl px-3 py-1.5 flex items-center gap-2 text-xs font-semibold">
+            <i class="fa-solid fa-temperature-arrow-up text-[#F87171]"></i>
+            <span>Temp: <strong id="dnatemp-lbl" class="text-[#2DD4BF]">${simParams.dnaTemp}°C</strong></span>
+            <input type="range" min="25" max="95" step="1" value="${simParams.dnaTemp}" oninput="simParams.dnaTemp=parseInt(this.value,10);document.getElementById('dnatemp-lbl').textContent=simParams.dnaTemp+'°C';" class="w-20">
+          </div>
+          <div class="glass-panel rounded-xl px-3 py-1.5 flex items-center gap-2 text-xs font-semibold">
+            <span>GC%: <strong id="dnagc-lbl" class="text-[#FBBF24]">${simParams.dnaGC}%</strong></span>
+            <input type="range" min="20" max="80" step="5" value="${simParams.dnaGC}" oninput="simParams.dnaGC=parseInt(this.value,10);document.getElementById('dnagc-lbl').textContent=simParams.dnaGC+'%';" class="w-16">
+          </div>
+        `;
       } else if (key === 'life_reactions:human_biochem') {
         box.innerHTML = `
-          <button onclick="simParams.humanStress='normal';render2DDynamicControls();" class="glass-panel rounded-xl px-2.5 py-2 text-xs font-bold ${simParams.humanStress==='normal'?'border-[#34D399] text-[#34D399]':'text-[#CBD5E1]'}">Resting (pH 7.40)</button>
-          <button onclick="simParams.humanStress='exercise';render2DDynamicControls();" class="glass-panel rounded-xl px-2.5 py-2 text-xs font-bold ${simParams.humanStress==='exercise'?'border-[#FBBF24] text-[#FBBF24]':'text-[#CBD5E1]'}">Exercise (Bohr Shift)</button>
+          <button onclick="simParams.humanStress='normal';render2DDynamicControls();" class="glass-panel rounded-xl px-2.5 py-2 text-xs font-bold ${simParams.humanStress==='normal'?'border-[#34D399] text-[#34D399]':'text-[#CBD5E1]'}">Resting Homeostasis (pH 7.40)</button>
+          <button onclick="simParams.humanStress='exercise';render2DDynamicControls();" class="glass-panel rounded-xl px-2.5 py-2 text-xs font-bold ${simParams.humanStress==='exercise'?'border-[#FBBF24] text-[#FBBF24]':'text-[#CBD5E1]'}">Heavy Exercise (High CO₂ / Bohr Shift)</button>
         `;
       } else if (key === 'practicals:prac_nfe_vitc') {
-        box.innerHTML = `<div class="glass-panel rounded-xl px-3 py-1.5 flex items-center gap-2 text-xs font-semibold"><span>Moisture: <strong id="pmoist-lbl" class="text-[#38BDF8]">${simParams.pracMoisturePct}%</strong></span><input type="range" min="5" max="45" step="1" value="${simParams.pracMoisturePct}" oninput="simParams.pracMoisturePct=parseInt(this.value,10);document.getElementById('pmoist-lbl').textContent=simParams.pracMoisturePct+'%';" class="w-16"></div>`;
+        box.innerHTML = `
+          <div class="glass-panel rounded-xl px-3 py-1.5 flex items-center gap-2 text-xs font-semibold">
+            <span>Moisture: <strong id="pmoist-lbl" class="text-[#38BDF8]">${simParams.pracMoisturePct}%</strong></span>
+            <input type="range" min="5" max="45" step="1" value="${simParams.pracMoisturePct}" oninput="simParams.pracMoisturePct=parseInt(this.value,10);document.getElementById('pmoist-lbl').textContent=simParams.pracMoisturePct+'%';" class="w-16">
+          </div>
+          <div class="glass-panel rounded-xl px-3 py-1.5 flex items-center gap-2 text-xs font-semibold">
+            <span>Protein: <strong id="pprot-lbl" class="text-[#34D399]">${simParams.pracProteinPct}%</strong></span>
+            <input type="range" min="5" max="35" step="1" value="${simParams.pracProteinPct}" oninput="simParams.pracProteinPct=parseInt(this.value,10);document.getElementById('pprot-lbl').textContent=simParams.pracProteinPct+'%';" class="w-16">
+          </div>
+        `;
       } else {
-        box.innerHTML = '';
+        box.innerHTML = ``;
       }
     }
 
@@ -3331,14 +3462,385 @@
       drawPill(880, 260, "Ascorbic Acid + Blue DCPIP → Colorless until Rose-Pink Endpoint", "#BE185D", "#FFF", 13);
     }
 
+    function drawHexagonRing(cx, cy, r, label, anomerType = 'alpha', highlightAnomeric = true) {
+      // Haworth perspective hexagon (O at top-right)
+      const pts = [
+        { x: cx + r * 0.5, y: cy - r * 0.82 },  // O (top-right)
+        { x: cx + r * 1.05, y: cy },            // C1 (anomeric, right)
+        { x: cx + r * 0.5, y: cy + r * 0.82 },  // C2 (bottom-right)
+        { x: cx - r * 0.5, y: cy + r * 0.82 },  // C3 (bottom-left)
+        { x: cx - r * 1.05, y: cy },            // C4 (left)
+        { x: cx - r * 0.5, y: cy - r * 0.82 }   // C5 (top-left)
+      ];
+      ctx.save();
+      ctx.strokeStyle = '#38BDF8';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(56, 189, 248, 0.10)';
+      ctx.fill();
+      ctx.stroke();
+
+      // Bold lower Haworth edge
+      ctx.strokeStyle = '#7DD3FC';
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.moveTo(pts[3].x, pts[3].y);
+      ctx.lineTo(pts[2].x, pts[2].y);
+      ctx.stroke();
+
+      // Ring Oxygen Atom
+      drawElectronDot(pts[0].x, pts[0].y, 'O', '#F87171', 12);
+
+      // C6 -CH2OH flag on C5
+      ctx.strokeStyle = '#94A3B8'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(pts[5].x, pts[5].y); ctx.lineTo(pts[5].x, pts[5].y - 34); ctx.stroke();
+      ctx.fillStyle = '#CBD5E1'; ctx.font = "700 11px 'Inter', sans-serif"; ctx.textAlign = 'center';
+      ctx.fillText("CH₂OH", pts[5].x, pts[5].y - 44);
+
+      // Anomeric C1 -OH orientation
+      if (highlightAnomeric) {
+        const ohDir = anomerType === 'beta' ? -1 : 1;
+        ctx.strokeStyle = anomerType === 'beta' ? '#FBBF24' : '#34D399';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(pts[1].x, pts[1].y);
+        ctx.lineTo(pts[1].x + 14, pts[1].y + ohDir * 36);
+        ctx.stroke();
+        drawPill(pts[1].x + 26, pts[1].y + ohDir * 48, anomerType === 'beta' ? "β-OH (Up)" : "α-OH (Down)", anomerType === 'beta' ? "#B45309" : "#065F46", "#FFF", 11);
+      }
+
+      ctx.fillStyle = '#FAF9F6';
+      ctx.font = "800 14px 'Plus Jakarta Sans', sans-serif";
+      ctx.textAlign = 'center';
+      ctx.fillText(label, cx, cy + 4);
+      ctx.restore();
+    }
+
+    function drawCarbMonosaccharides(t) {
+      drawRoundRect(75, 65, 540, 445, 22, 'rgba(15, 41, 51, 0.55)', 'rgba(56,189,248,0.28)', 1.5);
+      ctx.fillStyle = '#38BDF8'; ctx.font = "800 16px 'Plus Jakarta Sans', sans-serif"; ctx.textAlign = 'left';
+      ctx.fillText("1. D-Glucose Ring Closure & Mutarotation", 100, 98);
+
+      if (simParams.carbAnomer === 'open') {
+        // Fischer Open Chain D-Glucose
+        const cx = 345;
+        ctx.strokeStyle = '#38BDF8'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(cx, 150); ctx.lineTo(cx, 430); ctx.stroke();
+        const carbons = [
+          { y: 150, lbl: "C1: –CHO (Aldehyde)", col: "#FBBF24" },
+          { y: 205, lbl: "C2: H – C – OH", col: "#CBD5E1" },
+          { y: 260, lbl: "C3: HO – C – H", col: "#CBD5E1" },
+          { y: 315, lbl: "C4: H – C – OH (Epimer site)", col: "#38BDF8" },
+          { y: 370, lbl: "C5: H – C – OH (Attacks C1)", col: "#34D399" },
+          { y: 425, lbl: "C6: –CH₂OH", col: "#94A3B8" }
+        ];
+        carbons.forEach(c => {
+          drawPill(cx, c.y, c.lbl, "#1E293B", c.col, 12, "#475569");
+        });
+        // Nucleophilic attack curve from C5-OH to C1
+        ctx.strokeStyle = '#34D399'; ctx.lineWidth = 2.5; ctx.setLineDash([5, 4]);
+        ctx.beginPath(); ctx.arc(cx - 115, 260, 110, -Math.PI * 0.45, Math.PI * 0.45); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#34D399'; ctx.font = "700 11px 'Inter', sans-serif"; ctx.textAlign = 'center';
+        ctx.fillText("C5-OH Nucleophilic Attack", 170, 260);
+      } else {
+        drawHexagonRing(335, 290, 92, simParams.carbAnomer === 'alpha' ? "α-D-Glucopyranose" : "β-D-Glucopyranose", simParams.carbAnomer, true);
+        drawPill(335, 455, "6-Membered Pyranose Ring (5C + 1O) · Hemiacetal C1", "#0F4C5C", "#7DD3FC", 12);
+      }
+
+      // Right Panel: Fructose (Furanose) & Stereoisomerism Summary
+      drawRoundRect(645, 65, 545, 445, 22, 'rgba(15, 41, 51, 0.55)', 'rgba(251,191,36,0.28)', 1.5);
+      ctx.fillStyle = '#FBBF24'; ctx.font = "800 16px 'Plus Jakarta Sans', sans-serif"; ctx.textAlign = 'left';
+      ctx.fillText("2. Furanose Ring & Stereoisomer Classes", 670, 98);
+
+      // 5-membered Furanose Pentagon (D-Fructose / Ribose)
+      const fcx = 915, fcy = 235, fr = 72;
+      const fpts = [
+        { x: fcx, y: fcy - fr },
+        { x: fcx + fr * 0.95, y: fcy - fr * 0.2 },
+        { x: fcx + fr * 0.6, y: fcy + fr * 0.85 },
+        { x: fcx - fr * 0.6, y: fcy + fr * 0.85 },
+        { x: fcx - fr * 0.95, y: fcy - fr * 0.2 }
+      ];
+      ctx.strokeStyle = '#FBBF24'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(fpts[0].x, fpts[0].y);
+      for (let i = 1; i < fpts.length; i++) ctx.lineTo(fpts[i].x, fpts[i].y);
+      ctx.closePath(); ctx.fillStyle = 'rgba(251,191,36,0.12)'; ctx.fill(); ctx.stroke();
+      drawElectronDot(fpts[0].x, fpts[0].y, 'O', '#F87171', 12);
+      ctx.fillStyle = '#FAF9F6'; ctx.font = "800 13px 'Inter', sans-serif"; ctx.textAlign = 'center';
+      ctx.fillText("D-Fructofuranose (5-Ring)", fcx, fcy + 12);
+
+      drawPill(915, 365, "Enantiomers: D- vs L-Sugars (Mirror Images)", "#1E293B", "#38BDF8", 12, "#38BDF8");
+      drawPill(915, 412, "Epimers: Differ at 1 Chiral C (Glucose vs Galactose at C4)", "#1E293B", "#34D399", 12, "#34D399");
+      drawPill(915, 459, "Anomers (α/β): Differ at Anomeric Carbon (Mutarotation)", "#1E293B", "#FBBF24", 12, "#FBBF24");
+    }
+
+    function drawCarbDisaccharides(t) {
+      const mode = simParams.carbDisacc;
+      drawRoundRect(85, 65, 1090, 445, 24, 'rgba(15, 41, 51, 0.55)', 'rgba(56,189,248,0.25)', 1.5);
+
+      const titles = {
+        maltose: { name: "MALTOSE (Glucose + Glucose)", bond: "α(1 → 4) Glycosidic Bond", status: "REDUCING SUGAR (Free C1 Anomeric –OH on Right)", col: "#34D399" },
+        lactose: { name: "LACTOSE (Galactose + Glucose · Milk Sugar)", bond: "β(1 → 4) Glycosidic Bond", status: "REDUCING SUGAR (Free C1 Anomeric –OH on Glucose)", col: "#38BDF8" },
+        sucrose: { name: "SUCROSE (Glucose + Fructose · Cane Sugar)", bond: "α(1 → 2) Glycosidic Bond", status: "NON-REDUCING SUGAR (Both Anomeric Carbons Locked)", col: "#FBBF24" }
+      };
+      const meta = titles[mode];
+
+      ctx.fillStyle = meta.col; ctx.font = "800 18px 'Plus Jakarta Sans', sans-serif"; ctx.textAlign = 'center';
+      ctx.fillText(meta.name, 630, 105);
+      drawPill(630, 145, meta.bond, "#0F4C5C", "#FFF", 13, meta.col);
+
+      // Left Sugar Ring
+      drawHexagonRing(430, 295, 82, mode === 'lactose' ? "β-D-Galactose" : "α-D-Glucose", mode === 'lactose' ? 'beta' : 'alpha', false);
+
+      // Glycosidic Oxygen Bridge in Center
+      const bridgePulse = 1 + Math.sin(t * 4) * 0.12;
+      drawArrow(525, 295, 610, 295, meta.col, 3.5);
+      drawElectronDot(630, 295, 'O', meta.col, 14 * bridgePulse);
+      drawArrow(650, 295, 735, 295, meta.col, 3.5);
+      ctx.fillStyle = '#94A3B8'; ctx.font = "700 11px 'Inter', sans-serif";
+      ctx.fillText("– H₂O (Condensation)", 630, 262);
+
+      // Right Sugar Ring
+      if (mode === 'sucrose') {
+        // 5-membered Fructose linked via C2
+        const fcx = 830, fcy = 295, fr = 76;
+        const fpts = [
+          { x: fcx, y: fcy - fr }, { x: fcx + fr * 0.95, y: fcy - fr * 0.2 },
+          { x: fcx + fr * 0.6, y: fcy + fr * 0.85 }, { x: fcx - fr * 0.6, y: fcy + fr * 0.85 },
+          { x: fcx - fr * 0.95, y: fcy - fr * 0.2 }
+        ];
+        ctx.strokeStyle = '#FBBF24'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(fpts[0].x, fpts[0].y);
+        for (let i = 1; i < fpts.length; i++) ctx.lineTo(fpts[i].x, fpts[i].y);
+        ctx.closePath(); ctx.fillStyle = 'rgba(251,191,36,0.12)'; ctx.fill(); ctx.stroke();
+        drawElectronDot(fpts[0].x, fpts[0].y, 'O', '#F87171', 12);
+        ctx.fillStyle = '#FAF9F6'; ctx.font = "800 14px 'Plus Jakarta Sans', sans-serif"; ctx.textAlign = 'center';
+        ctx.fillText("β-D-Fructose", fcx, fcy + 8);
+      } else {
+        drawHexagonRing(830, 295, 82, "D-Glucose", 'alpha', true);
+      }
+
+      drawPill(630, 455, meta.status, mode === 'sucrose' ? "#78350F" : "#065F46", "#FFF", 13, meta.col);
+    }
+
+    function drawCarbPolysaccharides(t) {
+      const mode = simParams.carbPoly;
+      drawRoundRect(85, 65, 1090, 445, 24, 'rgba(15, 41, 51, 0.55)', 'rgba(255,255,255,0.12)', 1.5);
+
+      if (mode === 'amylose') {
+        ctx.fillStyle = '#38BDF8'; ctx.font = "800 18px 'Plus Jakarta Sans', sans-serif"; ctx.textAlign = 'center';
+        ctx.fillText("STARCH (AMYLOSE): Unbranched α(1→4) Helical Storage Polymer", 630, 105);
+        // Helical chain of glucose beads
+        for (let i = 0; i < 14; i++) {
+          const x = 220 + i * 62;
+          const y = 275 + Math.sin(i * 0.85 + t * 2) * 48;
+          if (i > 0) {
+            const px = 220 + (i - 1) * 62;
+            const py = 275 + Math.sin((i - 1) * 0.85 + t * 2) * 48;
+            ctx.strokeStyle = '#38BDF8'; ctx.lineWidth = 4;
+            ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(x, y); ctx.stroke();
+          }
+          drawElectronDot(x, y, 'Glc', '#38BDF8', 16);
+        }
+        drawPill(630, 435, "Digestible by Human α-Amylase · Coiled Granules in Plant Chloroplasts", "#0F4C5C", "#7DD3FC", 13);
+      } else if (mode === 'glycogen') {
+        ctx.fillStyle = '#34D399'; ctx.font = "800 18px 'Plus Jakarta Sans', sans-serif"; ctx.textAlign = 'center';
+        ctx.fillText("GLYCOGEN: Highly Branched α(1→4) + α(1→6) Animal Energy Battery", 630, 105);
+        // Main chain + multiple α(1->6) branches with glowing non-reducing ends
+        for (let i = 0; i < 13; i++) {
+          const x = 230 + i * 65;
+          const y = 330;
+          if (i > 0) { ctx.strokeStyle = '#10B981'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(x - 65, y); ctx.lineTo(x, y); ctx.stroke(); }
+          drawElectronDot(x, y, 'Glc', '#10B981', 14);
+        }
+        // Branches at i=3, 7, 10
+        [3, 7, 10].forEach((bIdx, k) => {
+          const bx = 230 + bIdx * 65;
+          for (let j = 1; j <= 3; j++) {
+            const nx = bx + j * 45;
+            const ny = 330 - j * 52;
+            ctx.strokeStyle = '#FBBF24'; ctx.lineWidth = 3.5;
+            ctx.beginPath(); ctx.moveTo(nx - 45, ny + 52); ctx.lineTo(nx, ny); ctx.stroke();
+            const isEnd = j === 3;
+            drawElectronDot(nx, ny, isEnd ? 'END' : 'Glc', isEnd ? '#FBBF24' : '#34D399', isEnd ? 16 : 13);
+          }
+        });
+        drawPill(630, 445, "Branches Every ~10 Units → Many Non-Reducing Ends for Rapid Glycogen Phosphorylase Release", "#065F46", "#6EE7B7", 12);
+      } else {
+        ctx.fillStyle = '#FBBF24'; ctx.font = "800 18px 'Plus Jakarta Sans', sans-serif"; ctx.textAlign = 'center';
+        ctx.fillText("CELLULOSE: Straight β(1→4) Fibrils Cross-Linked by Hydrogen Bonds", 630, 105);
+        for (let row = 0; row < 3; row++) {
+          const y = 205 + row * 72;
+          for (let i = 0; i < 12; i++) {
+            const x = 240 + i * 70;
+            if (i > 0) { ctx.strokeStyle = '#F59E0B'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(x - 70, y); ctx.lineTo(x, y); ctx.stroke(); }
+            if (row < 2) {
+              ctx.strokeStyle = 'rgba(125, 211, 252, 0.55)'; ctx.setLineDash([4, 4]); ctx.lineWidth = 2;
+              ctx.beginPath(); ctx.moveTo(x, y + 14); ctx.lineTo(x, y + 58); ctx.stroke(); ctx.setLineDash([]);
+            }
+            drawElectronDot(x, y, 'β-Glc', '#FBBF24', 15);
+          }
+        }
+        drawPill(630, 445, "High Tensile Plant Cell Wall Fiber · Indigestible by Humans (Requires Bacterial Cellulase)", "#78350F", "#FDE68A", 12);
+      }
+    }
+
+    function drawGlycolysis(t) {
+      drawRoundRect(75, 65, 540, 445, 22, 'rgba(245, 158, 11, 0.10)', '#F59E0B', 1.5);
+      ctx.fillStyle = '#FBBF24'; ctx.font = "800 16px 'Plus Jakarta Sans', sans-serif"; ctx.textAlign = 'left';
+      ctx.fillText("PHASE 1: Preparatory (Invests 2 ATP)", 100, 98);
+
+      drawPill(345, 150, "Glucose (6C)", "#1E293B", "#FAF9F6", 14, "#38BDF8");
+      drawArrow(345, 170, 345, 215, "#FBBF24", 2.5);
+      drawPill(210, 192, "Hexokinase (−1 ATP)", "#B45309", "#FFF", 11);
+      drawPill(345, 235, "Glucose 6-Phosphate (6C)", "#1E293B", "#CBD5E1", 12);
+      drawArrow(345, 255, 345, 300, "#FBBF24", 2.5);
+      drawPill(200, 278, "PFK (−1 ATP · Rate Limit)", "#DC2626", "#FFF", 11);
+      drawPill(345, 320, "Fructose 1,6-Bisphosphate (6C)", "#1E293B", "#FDE68A", 12, "#F59E0B");
+      drawArrow(345, 340, 345, 395, "#34D399", 3);
+      drawPill(220, 368, "Aldolase Cleavage", "#0F4C5C", "#7DD3FC", 11);
+      drawPill(345, 420, "2 × Glyceraldehyde 3-Phosphate (3C)", "#059669", "#FFF", 13, "#6EE7B7");
+
+      // Phase 2: Payoff & Pyruvate Fate
+      drawRoundRect(645, 65, 545, 445, 22, 'rgba(16, 185, 129, 0.10)', '#10B981', 1.5);
+      ctx.fillStyle = '#34D399'; ctx.font = "800 16px 'Plus Jakarta Sans', sans-serif"; ctx.textAlign = 'left';
+      ctx.fillText("PHASE 2: Payoff (Yields 4 ATP + 2 NADH)", 670, 98);
+
+      drawPill(915, 150, "2 × G3P (3C)", "#059669", "#FFF", 13);
+      drawArrow(915, 170, 915, 218, "#38BDF8", 3);
+      drawPill(1070, 194, "+ 2 NADH (GAPDH)", "#0284C7", "#FFF", 11);
+      drawPill(915, 238, "2 × 1,3-Bisphosphoglycerate", "#1E293B", "#CBD5E1", 12);
+      drawArrow(915, 258, 915, 308, "#10B981", 3);
+      drawPill(1075, 282, "+ 4 ATP (PGK & PK)", "#059669", "#FFF", 11);
+      drawPill(915, 330, "2 × Pyruvate (3C)", "#10B981", "#041318", 14, "#FFF");
+
+      drawArrow(915, 352, 915, 405, simParams.glycOxygen ? "#38BDF8" : "#F87171", 3.5);
+      if (simParams.glycOxygen) {
+        drawPill(915, 435, "Aerobic → 2 Acetyl-CoA + 2 CO₂ → Krebs Cycle", "#0F4C5C", "#7DD3FC", 12, "#38BDF8");
+      } else {
+        drawPill(915, 435, "Anaerobic Fermentation → 2 Lactate (Regenerates NAD⁺)", "#881337", "#FDA4AF", 12, "#F43F5E");
+      }
+
+      // Animated Glucose-to-Pyruvate Carbon Packet
+      const prog = (t * 0.35) % 1;
+      if (prog < 0.5) {
+        drawElectronDot(345, 150 + (prog * 2) * 270, '6C', '#FBBF24', 12);
+      } else {
+        drawElectronDot(915, 150 + ((prog - 0.5) * 2) * 285, '2×3C', '#34D399', 13);
+      }
+    }
+
+    function drawKrebsCycle(t) {
+      const effT = t * simParams.metabSpeed;
+      const cx = 640, cy = 295, rx = 245, ry = 165;
+
+      // Pyruvate -> Acetyl-CoA Entry at Top
+      drawPill(350, 82, "Pyruvate (3C)", "#1E293B", "#FAF9F6", 12, "#38BDF8");
+      drawArrow(415, 82, 545, 82, "#FBBF24", 2.5);
+      drawPill(640, 82, "Acetyl-CoA (2C)", "#D97706", "#FFF", 13, "#FDE68A");
+      drawPill(845, 82, "PDH: +1 CO₂ + 1 NADH", "#0F4C5C", "#7DD3FC", 11);
+      drawArrow(640, 102, 640, 128, "#FBBF24", 3);
+
+      // Cycle Ring
+      ctx.strokeStyle = 'rgba(245, 158, 11, 0.35)'; ctx.lineWidth = 6;
+      ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); ctx.stroke();
+
+      drawRoundRect(cx - 125, cy - 38, 250, 76, 18, 'rgba(245, 158, 11, 0.14)', '#F59E0B', 2);
+      ctx.fillStyle = '#FBBF24'; ctx.font = "800 17px 'Plus Jakarta Sans', sans-serif"; ctx.textAlign = 'center';
+      ctx.fillText("CITRIC ACID CYCLE", cx, cy - 8);
+      ctx.fillStyle = '#CBD5E1'; ctx.font = "600 12px 'Inter', sans-serif";
+      ctx.fillText("Matrix · Per Turn: 3 NADH, 1 FADH₂, 1 ATP", cx, cy + 14);
+
+      // Cycle Intermediates
+      drawPill(cx + 150, cy - 135, "Citrate (6C)", "#065F46", "#6EE7B7", 13, "#10B981");
+      drawPill(cx + rx + 65, cy - 15, "α-Ketoglutarate (5C)", "#1E293B", "#FAF9F6", 12, "#38BDF8");
+      drawPill(cx + rx + 110, cy - 62, "+ CO₂ + NADH", "#0284C7", "#FFF", 11);
+
+      drawPill(cx + 155, cy + 140, "Succinyl-CoA → Succinate (4C)", "#1E293B", "#FAF9F6", 12, "#F59E0B");
+      drawPill(cx + 185, cy + 182, "+ CO₂ + NADH + GTP/ATP", "#B45309", "#FFF", 11);
+
+      drawPill(cx - 165, cy + 140, "Fumarate → Malate (4C)", "#1E293B", "#CBD5E1", 12, "#A855F7");
+      drawPill(cx - 195, cy + 182, "+ FADH₂ + NADH", "#7E22CE", "#FFF", 11);
+
+      drawPill(cx - 165, cy - 135, "Oxaloacetate (4C)", "#0F4C5C", "#7DD3FC", 13, "#38BDF8");
+
+      for (let i = 0; i < 6; i++) {
+        const ang = (effT * 0.6 + (i * Math.PI) / 3) % (Math.PI * 2);
+        drawElectronDot(cx + Math.cos(ang) * rx, cy + Math.sin(ang) * ry, ang < Math.PI * 0.3 ? '6C' : '4C', '#FBBF24', 11);
+      }
+    }
+
+    function drawOxPhos(t) {
+      const active = simParams.oxphosO2;
+      const effT = active ? t : t * 0.05;
+
+      drawRoundRect(75, 55, 1090, 165, 18, 'rgba(244, 63, 94, 0.15)');
+      drawRoundRect(75, 320, 1090, 195, 18, 'rgba(15, 76, 92, 0.25)');
+      ctx.fillStyle = '#FDA4AF'; ctx.font = "800 15px 'Plus Jakarta Sans', sans-serif"; ctx.textAlign = 'left';
+      ctx.fillText("INTERMEMBRANE SPACE (High H⁺ · Proton-Motive Force Reservoir)", 95, 82);
+      ctx.fillStyle = '#7DD3FC';
+      ctx.fillText("MITOCHONDRIAL MATRIX (Low H⁺ · NADH & FADH₂ Oxidation)", 95, 495);
+
+      // Inner Mitochondrial Membrane
+      drawRoundRect(75, 225, 1090, 90, 12, 'rgba(253, 224, 71, 0.08)', 'rgba(253, 224, 71, 0.35)', 1.5);
+
+      // Complexes I, II, III, IV
+      const complexes = [
+        { x: 180, lbl: "Complex I", sub: "NADH→NAD⁺", pump: true, col: "#0284C7" },
+        { x: 340, lbl: "Complex II", sub: "FADH₂→FAD", pump: false, col: "#0D9488" },
+        { x: 520, lbl: "Complex III", sub: "Cyt bc₁", pump: true, col: "#059669" },
+        { x: 710, lbl: "Complex IV", sub: "O₂ → H₂O", pump: true, col: "#D97706" }
+      ];
+      complexes.forEach(c => {
+        drawRoundRect(c.x - 52, 205, 104, 130, 18, c.col, '#FFF', 1.5);
+        ctx.fillStyle = '#FFF'; ctx.font = "800 13px 'Inter', sans-serif"; ctx.textAlign = 'center';
+        ctx.fillText(c.lbl, c.x, 262);
+        ctx.font = "600 10px 'Inter', sans-serif"; ctx.fillText(c.sub, c.x, 280);
+        if (c.pump && active) drawArrow(c.x, 365, c.x, 165, "#F43F5E", 3);
+      });
+
+      // Oxygen Final Electron Acceptor at Complex IV
+      if (active) {
+        drawPill(710, 415, "½ O₂ + 2 H⁺ + 2 e⁻ → H₂O", "#059669", "#FFF", 12, "#6EE7B7");
+      } else {
+        drawPill(710, 415, "BLOCKED: No O₂ Final Acceptor (Chain Backed Up!)", "#DC2626", "#FFF", 12, "#FCA5A5");
+      }
+
+      // ATP Synthase (Complex V)
+      drawRoundRect(955, 215, 64, 110, 12, '#7C3AED', '#C4B5FD', 2);
+      ctx.save(); ctx.translate(987, 365); ctx.rotate(effT * 2.5);
+      for (let b = 0; b < 6; b++) {
+        const ang = (b * Math.PI) / 3;
+        ctx.fillStyle = b % 2 === 0 ? '#8B5CF6' : '#A78BFA';
+        ctx.beginPath(); ctx.arc(Math.cos(ang) * 24, Math.sin(ang) * 24, 14, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.restore();
+      ctx.fillStyle = '#FFF'; ctx.font = "800 12px 'Inter', sans-serif"; ctx.fillText("ATP Synthase", 987, 415);
+      drawArrow(987, 155, 987, 345, active ? "#F43F5E" : "#475569", 4);
+      drawPill(1080, 365, active ? "~30–32 ATP / Glc" : "0 OxPhos ATP", active ? "#F59E0B" : "#334155", active ? "#041318" : "#94A3B8", 12);
+
+      // Moving Electrons & H+
+      if (active) {
+        const ex = 180 + ((t * 180) % 530);
+        drawElectronDot(ex, 270, 'e⁻', '#38BDF8', 11);
+        for (let p = 0; p < 8; p++) {
+          drawElectronDot(160 + ((p * 95 + t * 40) % 820), 125 + Math.sin(t * 3 + p) * 18, 'H⁺', '#FB7185', 10);
+        }
+      }
+    }
+
     function render2DLoop(timestamp) {
       requestAnimationFrame(render2DLoop);
       if (!last2DTs) last2DTs = timestamp;
       const dt = Math.min((timestamp - last2DTs) / 1000, 0.1);
       last2DTs = timestamp;
 
-      const mod = COURSE_MODULES[activeModule];
-      if (!mod || mod.is3D) return;
+      const topics = twoDTopics[activeModule];
+      if (currentView !== '2d' || !topics) return;
 
       if (!sim2DPaused) {
         sim2DTime += dt;
@@ -3346,7 +3848,7 @@
           sim2DTourTimer += dt;
           if (sim2DTourTimer > 6.5) {
             sim2DTourTimer = 0;
-            const subs = mod.subtopics;
+            const subs = topics;
             const nextIdx = (subs.findIndex(s => s.id === activeSubtopic) + 1) % subs.length;
             select2DSubtopic(subs[nextIdx].id, true);
           }
@@ -3363,7 +3865,13 @@
       ctx.scale(scale, scale);
 
       const route = `${activeModule}:${activeSubtopic}`;
-      if (route === 'photosynthesis:light') drawLightReaction(sim2DTime);
+      if (route === 'carbohydrates:mono') drawCarbMonosaccharides(sim2DTime);
+      else if (route === 'carbohydrates:di') drawCarbDisaccharides(sim2DTime);
+      else if (route === 'carbohydrates:poly') drawCarbPolysaccharides(sim2DTime);
+      else if (route === 'metabolism:glycolysis') drawGlycolysis(sim2DTime);
+      else if (route === 'metabolism:krebs') drawKrebsCycle(sim2DTime);
+      else if (route === 'metabolism:oxphos') drawOxPhos(sim2DTime);
+      else if (route === 'photosynthesis:light') drawLightReaction(sim2DTime);
       else if (route === 'photosynthesis:photophos') drawPhotophosphorylation(sim2DTime);
       else if (route === 'photosynthesis:calvin') drawCalvinCycle(sim2DTime);
       else if (route === 'photosynthesis:photoresp') drawPhotorespiration(sim2DTime);
@@ -3527,7 +4035,8 @@
 
     window.onload = function () {
       resize2DCanvas();
-      initUnified3DScene();
+      try { initUnified3DScene(); }
+      catch (error) { webglAvailable = false; console.warn('3D animation unavailable', error); }
       if (window.matchMedia('(max-width: 767px)').matches) toggleLectureDrawer();
       switchCourseModule('carbohydrates');
       requestAnimationFrame(render3DLoop);
